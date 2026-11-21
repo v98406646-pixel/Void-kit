@@ -19,8 +19,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
       - name: Generate click.wav if missing
         run: |
           mkdir -p app/src/main/res/raw
