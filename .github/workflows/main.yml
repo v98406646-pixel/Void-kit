@@ -19,7 +19,7 @@ jobs:
       - name: Prepare VoidKeys project files
         run: |
           python3 - << 'PY'
-          import os, math, struct, wave, zlib, base64
+          import os, math, struct, wave, zlib
 
           def write_file(path, content, overwrite=False):
               parent = os.path.dirname(path)
@@ -43,20 +43,17 @@ jobs:
                       nx = (x - cx) / (size * 0.5)
                       r2 = nx * nx + ny * ny
 
-                      # Тёмно-фиолетовый космический фон с мягким неоновым свечением
                       glow = max(0.0, 1.0 - r2 * 0.85)
                       base_r = int(14 + 78 * glow + 26 * max(0.0, -ny))
                       base_g = int(10 + 26 * glow)
                       base_b = int(36 + 135 * glow + 35 * max(0.0, nx))
 
-                      # Рамка вокруг всей иконки
                       edge_dist = max(abs(nx), abs(ny))
                       if 0.84 <= edge_dist <= 0.92:
                           base_r = min(255, base_r + 135)
                           base_g = min(255, base_g + 90)
                           base_b = 255
 
-                      # Силуэт короны сверху
                       crown_y = ny + 0.46
                       if -0.14 <= crown_y <= 0.14:
                           spiky = abs(((nx * 5.0) % 1.0) - 0.5) * 2.0
@@ -65,16 +62,13 @@ jobs:
                               base_g = 175
                               base_b = 255
 
-                      # Наклонная неоновая клавиатура по центру
                       kx = nx * 0.92 - ny * 0.22
                       ky = ny * 0.92 + nx * 0.22 - 0.06
                       if -0.58 <= kx <= 0.58 and -0.26 <= ky <= 0.30:
-                          # Внутренняя подсветка панели клавиатуры
                           base_r = min(255, base_r + 45)
                           base_g = min(255, base_g + 35)
                           base_b = min(255, base_b + 85)
 
-                          # Ряды клавиш
                           row_hit = False
                           for row_idx in range(3):
                               ry = -0.18 + row_idx * 0.13
@@ -83,9 +77,7 @@ jobs:
                                   if cell_phase < 0.34:
                                       row_hit = True
                                       break
-                          # Пробел внизу клавиатуры
                           space_hit = (0.17 <= ky <= 0.25 and abs(kx) < 0.24)
-                          # Контур клавиатуры
                           board_border = (abs(abs(kx) - 0.58) < 0.022 and -0.26 <= ky <= 0.30) or (
                               abs(ky - (-0.26)) < 0.022 and -0.58 <= kx <= 0.58
                           ) or (
@@ -97,7 +89,6 @@ jobs:
                               base_g = 210
                               base_b = 255
 
-                      # Искры / звёздочки по бокам
                       sparkles = [(-0.56, -0.34, 0.06), (0.58, -0.28, 0.05), (0.04, 0.62, 0.065)]
                       for sx, sy, sr in sparkles:
                           dx = abs(nx - sx)
@@ -349,13 +340,25 @@ jobs:
               .install-btn.applied { background: #10b981; }
               .test-box {
                 margin: 14px; padding: 14px; border-radius: 18px;
-                background: #150f29; border: 1px solid rgba(255,255,255,0.1);
+                background: #150f29; border: 1px solid rgba(255,255,255,0.12);
               }
-              .test-box input {
-                width: 100%; padding: 12px; border-radius: 12px;
+              .typed-screen {
+                min-height: 46px; padding: 10px 12px; border-radius: 12px;
                 border: 1px solid rgba(167,139,250,0.35); background: #0c071a;
-                color: #fff; font-size: 14px; margin-bottom: 10px;
+                color: #fff; font-size: 15px; margin-bottom: 10px; word-break: break-word;
               }
+              .live-pad {
+                border-radius: 16px; padding: 10px; margin-bottom: 12px;
+                background: linear-gradient(135deg, #2e1065, #1e1b4b);
+                border: 1px solid rgba(255,255,255,0.14);
+              }
+              .live-row { display: flex; gap: 5px; margin-bottom: 6px; }
+              .live-row:last-child { margin-bottom: 0; }
+              .live-key {
+                flex: 1; height: 38px; border-radius: 9px; border: none;
+                background: rgba(255,255,255,0.16); color: #fff; font-weight: 700; font-size: 13px;
+              }
+              .live-key:active { transform: scale(0.95); background: rgba(255,255,255,0.32); }
               .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
               .sec-btn {
                 border: 1px solid rgba(255,255,255,0.16); background: #22183d;
@@ -383,15 +386,15 @@ jobs:
                 </div>
               </div>
               <div class="top-actions">
-                <button class="icon-btn" onclick="focusTest()">🔍</button>
+                <button class="icon-btn" onclick="focusTest()">⌨️</button>
                 <button class="icon-btn" onclick="askMic()">🎤</button>
               </div>
             </div>
 
             <div class="hero">
               <h2>У каждой клавиатуры свой звук 💎</h2>
-              <p>Хрусталь, молнии, глитч, бит и аккорд — выбирай стиль, проверяй ввод и включай клавиатуру в системе.</p>
-              <button class="hero-btn" onclick="focusTest()">Протестировать активную →</button>
+              <p>Сначала включи VoidKeys в настройках ввода, выбери её в списке клавиатур и протестируй звуки прямо ниже.</p>
+              <button class="hero-btn" onclick="focusTest()">Проверить печать и звук →</button>
             </div>
 
             <div class="cats" id="cats"></div>
@@ -404,12 +407,28 @@ jobs:
             <div class="grid" id="grid"></div>
 
             <div class="test-box" id="testBox">
-              <h3 style="margin:0 0 8px;font-size:15px;">Проверка ввода и настроек</h3>
-              <input id="testInput" type="text" placeholder="Нажми сюда, чтобы протестировать ввод..." />
+              <h3 style="margin:0 0 8px;font-size:15px;">Живой тест клавиатуры и звука</h3>
+              <div class="typed-screen" id="typedScreen">Нажми кнопки ниже, чтобы проверить звук и текст...</div>
+              <div class="live-pad" id="livePad">
+                <div class="live-row">
+                  <button class="live-key" onclick="typeDemo('п')">п</button>
+                  <button class="live-key" onclick="typeDemo('р')">р</button>
+                  <button class="live-key" onclick="typeDemo('и')">и</button>
+                  <button class="live-key" onclick="typeDemo('в')">в</button>
+                  <button class="live-key" onclick="typeDemo('е')">е</button>
+                  <button class="live-key" onclick="typeDemo('т')">т</button>
+                </div>
+                <div class="live-row">
+                  <button class="live-key" style="flex:3" onclick="typeDemo(' ')">пробел</button>
+                  <button class="live-key" onclick="typeDemo('⌫')">⌫</button>
+                  <button class="live-key" onclick="typeDemo('CLR')">очистить</button>
+                </div>
+              </div>
               <div class="action-row">
-                <button class="sec-btn" onclick="openImeSettings()">⚙️ Включить клавиатуру</button>
-                <button class="sec-btn" onclick="askMic()">🎤 Доступ к микрофону</button>
-                <button class="sec-btn" onclick="playPreview()">🔊 Тест звука</button>
+                <button class="sec-btn" onclick="openImeSettings()">1. Включить в настройках</button>
+                <button class="sec-btn" onclick="openImePicker()">2. Выбрать вместо старой</button>
+                <button class="sec-btn" onclick="askMic()">🎤 Микрофон</button>
+                <button class="sec-btn" onclick="playThemeSound(activeId)">🔊 Звук темы</button>
               </div>
             </div>
 
@@ -421,18 +440,53 @@ jobs:
 
             <script>
               const themes = [
-                { id: "void", name: "Void Neon", sub: "Космос + Синт", cat: "Неоновые", tag: "Неон", bg: "linear-gradient(135deg, #3b0764, #1d4ed8)" },
-                { id: "cyber", name: "Cyber Neon", sub: "Молнии + Синт", cat: "Неоновые", tag: "Неон", bg: "linear-gradient(135deg, #0e7490, #312e81)" },
-                { id: "horror", name: "Horror Glitch", sub: "Черепа + Глитч", cat: "Хоррор", tag: "Хоррор", bg: "linear-gradient(135deg, #7f1d1d, #1f090d)" },
-                { id: "gaming", name: "Gaming Pro", sub: "Звёзды + Бит", cat: "Игровые", tag: "Игровые", bg: "linear-gradient(135deg, #065f46, #111827)" },
-                { id: "gold", name: "Gold Luxury", sub: "Корона + Аккорд", cat: "Милые", tag: "Люкс", bg: "linear-gradient(135deg, #92400e, #451a03)" },
-                { id: "crystal", name: "Crystal Magic", sub: "Алмазы + Хрусталь", cat: "Милые", tag: "Милые", bg: "linear-gradient(135deg, #6d28d9, #a21caf)" }
+                { id: "void", name: "Void Neon", sub: "Космос + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.15, freq: 580, wave: "sine", bg: "linear-gradient(135deg, #3b0764, #1d4ed8)" },
+                { id: "cyber", name: "Cyber Neon", sub: "Молнии + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.35, freq: 880, wave: "sawtooth", bg: "linear-gradient(135deg, #0e7490, #312e81)" },
+                { id: "horror", name: "Horror Glitch", sub: "Черепа + Глитч", cat: "Хоррор", tag: "Хоррор", pitch: 0.72, freq: 210, wave: "square", bg: "linear-gradient(135deg, #7f1d1d, #1f090d)" },
+                { id: "gaming", name: "Gaming Pro", sub: "Звёзды + Бит", cat: "Игровые", tag: "Игровые", pitch: 1.08, freq: 440, wave: "triangle", bg: "linear-gradient(135deg, #065f46, #111827)" },
+                { id: "gold", name: "Gold Luxury", sub: "Корона + Аккорд", cat: "Милые", tag: "Люкс", pitch: 0.92, freq: 660, wave: "sine", bg: "linear-gradient(135deg, #92400e, #451a03)" },
+                { id: "crystal", name: "Crystal Magic", sub: "Алмазы + Хрусталь", cat: "Милые", tag: "Милые", pitch: 1.45, freq: 1040, wave: "sine", bg: "linear-gradient(135deg, #6d28d9, #a21caf)" }
               ];
               const categories = ["Все", "Милые", "Неоновые", "Игровые", "Хоррор"];
               let selectedCat = "Все";
               let currentTab = "home";
               let activeId = localStorage.getItem("vk_theme") || "void";
               let favs = JSON.parse(localStorage.getItem("vk_favs") || "[]");
+              let typedBuffer = "";
+              let audioCtx = null;
+
+              function getThemeObj(id) {
+                return themes.find(t => t.id === id) || themes[0];
+              }
+
+              function playWebSynth(t) {
+                try {
+                  if (!audioCtx) {
+                    const Ctx = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new Ctx();
+                  }
+                  if (audioCtx.state === "suspended") audioCtx.resume();
+                  const osc = audioCtx.createOscillator();
+                  const gain = audioCtx.createGain();
+                  osc.type = t.wave;
+                  osc.frequency.setValueAtTime(t.freq, audioCtx.currentTime);
+                  osc.frequency.exponentialRampToValueAtTime(Math.max(90, t.freq * 0.55), audioCtx.currentTime + 0.055);
+                  gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+                  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+                  osc.connect(gain);
+                  gain.connect(audioCtx.destination);
+                  osc.start();
+                  osc.stop(audioCtx.currentTime + 0.065);
+                } catch (e) {}
+              }
+
+              function playThemeSound(id) {
+                const t = getThemeObj(id);
+                playWebSynth(t);
+                if (window.AndroidBridge && window.AndroidBridge.playClickWithPitch) {
+                  window.AndroidBridge.playClickWithPitch(t.pitch);
+                }
+              }
 
               function saveState() {
                 localStorage.setItem("vk_theme", activeId);
@@ -442,15 +496,15 @@ jobs:
                 }
               }
 
-              function playPreview() {
-                if (window.AndroidBridge && window.AndroidBridge.playClick) {
-                  window.AndroidBridge.playClick();
-                }
-              }
-
               function openImeSettings() {
                 if (window.AndroidBridge && window.AndroidBridge.openInputSettings) {
                   window.AndroidBridge.openInputSettings();
+                }
+              }
+
+              function openImePicker() {
+                if (window.AndroidBridge && window.AndroidBridge.openInputPicker) {
+                  window.AndroidBridge.openInputPicker();
                 }
               }
 
@@ -461,10 +515,18 @@ jobs:
               }
 
               function focusTest() {
-                const el = document.getElementById("testInput");
+                const el = document.getElementById("testBox");
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
-                el.focus();
-                playPreview();
+                playThemeSound(activeId);
+              }
+
+              function typeDemo(ch) {
+                playThemeSound(activeId);
+                if (ch === "CLR") typedBuffer = "";
+                else if (ch === "⌫") typedBuffer = typedBuffer.slice(0, -1);
+                else typedBuffer += ch;
+                const el = document.getElementById("typedScreen");
+                el.textContent = typedBuffer.length ? typedBuffer : "Нажми кнопки ниже, чтобы проверить звук и текст...";
               }
 
               function toggleFav(id, ev) {
@@ -478,7 +540,7 @@ jobs:
               function selectTheme(id) {
                 activeId = id;
                 saveState();
-                playPreview();
+                playThemeSound(id);
                 render();
               }
 
@@ -507,8 +569,9 @@ jobs:
 
               function render() {
                 renderCats();
-                const activeObj = themes.find(t => t.id === activeId) || themes[0];
+                const activeObj = getThemeObj(activeId);
                 document.getElementById("activeChip").textContent = "Активна: " + activeObj.name;
+                document.getElementById("livePad").style.background = activeObj.bg;
 
                 let list = themes.filter(t => selectedCat === "Все" || t.cat === selectedCat);
                 if (currentTab === "fav") {
@@ -570,6 +633,7 @@ jobs:
           import android.os.Vibrator
           import android.os.VibratorManager
           import android.provider.Settings
+          import android.view.inputmethod.InputMethodManager
           import android.webkit.JavascriptInterface
           import android.webkit.WebSettings
           import android.webkit.WebView
@@ -601,6 +665,14 @@ jobs:
                   }
 
                   @JavascriptInterface
+                  fun openInputPicker() {
+                      runOnUiThread {
+                          val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                          imm.showInputMethodPicker()
+                      }
+                  }
+
+                  @JavascriptInterface
                   fun requestMic() {
                       runOnUiThread {
                           ActivityCompat.requestPermissions(
@@ -612,26 +684,26 @@ jobs:
                   }
 
                   @JavascriptInterface
-                  fun playClick() {
+                  fun playClickWithPitch(pitch: Float) {
                       runOnUiThread {
                           if (soundLoaded) {
-                              soundPool.play(clickSoundId, 0.7f, 0.7f, 1, 0, 1.0f)
+                              soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, pitch.coerceIn(0.5f, 2.0f))
                           }
                           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                               val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                               vm.defaultVibrator.vibrate(
-                                  VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                                  VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
                               )
                           } else {
                               @Suppress("DEPRECATION")
                               val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                   vib.vibrate(
-                                      VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                                      VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
                                   )
                               } else {
                                   @Suppress("DEPRECATION")
-                                  vib.vibrate(15)
+                                  vib.vibrate(18)
                               }
                           }
                       }
@@ -699,7 +771,8 @@ jobs:
               private var clickSoundId: Int = 0
               private var soundLoaded = false
               private lateinit var rootLayout: LinearLayout
-              private var currentPitch: Float = 1.0f
+              private var currentPitch: Float = 1.15f
+              private var currentVibMs: Long = 16L
 
               private val rows = listOf(
                   listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
@@ -746,24 +819,34 @@ jobs:
                   val themeId = prefs.getString("active_theme", "void") ?: "void"
                   val colors = when (themeId) {
                       "cyber" -> {
-                          currentPitch = 1.25f
-                          intArrayOf(Color.parseColor("#120D2B"), Color.parseColor("#09152B"))
+                          currentPitch = 1.35f
+                          currentVibMs = 14L
+                          intArrayOf(Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
                       }
                       "horror" -> {
                           currentPitch = 0.72f
-                          intArrayOf(Color.parseColor("#180709"), Color.parseColor("#2B0B0E"))
+                          currentVibMs = 32L
+                          intArrayOf(Color.parseColor("#7F1D1D"), Color.parseColor("#1F090D"))
                       }
                       "gaming" -> {
                           currentPitch = 1.08f
-                          intArrayOf(Color.parseColor("#091C18"), Color.parseColor("#0D2B24"))
+                          currentVibMs = 22L
+                          intArrayOf(Color.parseColor("#065F46"), Color.parseColor("#111827"))
                       }
                       "gold" -> {
                           currentPitch = 0.92f
-                          intArrayOf(Color.parseColor("#1F1004"), Color.parseColor("#361C06"))
+                          currentVibMs = 18L
+                          intArrayOf(Color.parseColor("#92400E"), Color.parseColor("#451A03"))
+                      }
+                      "crystal" -> {
+                          currentPitch = 1.45f
+                          currentVibMs = 12L
+                          intArrayOf(Color.parseColor("#6D28D9"), Color.parseColor("#A21CAF"))
                       }
                       else -> {
                           currentPitch = 1.15f
-                          intArrayOf(Color.parseColor("#131233"), Color.parseColor("#1D1B4B"))
+                          currentVibMs = 16L
+                          intArrayOf(Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                       }
                   }
                   rootLayout.background = GradientDrawable(
@@ -824,23 +907,23 @@ jobs:
 
               private fun playTapEffects() {
                   if (soundLoaded) {
-                      soundPool.play(clickSoundId, 0.7f, 0.7f, 1, 0, currentPitch)
+                      soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
                   }
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                       val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                       vm.defaultVibrator.vibrate(
-                          VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                          VibrationEffect.createOneShot(currentVibMs, VibrationEffect.DEFAULT_AMPLITUDE)
                       )
                   } else {
                       @Suppress("DEPRECATION")
                       val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                           vib.vibrate(
-                              VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                              VibrationEffect.createOneShot(currentVibMs, VibrationEffect.DEFAULT_AMPLITUDE)
                           )
                       } else {
                           @Suppress("DEPRECATION")
-                          vib.vibrate(15)
+                          vib.vibrate(currentVibMs)
                       }
                   }
               }
