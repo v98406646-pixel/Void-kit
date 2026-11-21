@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>KeyStyle — Уникальные звуки для каждой клавиатуры</title>
+  <style>
+    :root {
+      --bg: #080711;
+      --bg-2: #121024;
+      --card: #16142c;
+      --card-border: rgba(139, 92, 246, 0.28);
+      --text: #f4f3ff;
+      --muted: #9894b8;
+      --accent: #8b5cf6;
+      --accent-2: #3b82f6;
+      --pink: #ec4899;
+      --kb-bg: #110f22;
+      --key-bg: rgba(255, 255, 255, 0.08);
+      --key-border: rgba(167, 139, 250, 0.35);
+      --key-glow: rgba(139, 92, 246, 0.55);
+      --key-text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, #1b143b 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 84px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 14px 14px 20px;
+    }
+
+    /* Шапка */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      box-shadow: 0 0 18px rgba(139, 92, 246, 0.5);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: 0.2px;
+    }
+
+    .brand h1 span {
+      background: linear-gradient(90deg, #c084fc, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .icon-btn.active {
+      border-color: #a855f7;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+    }
+
+    /* Баннер */
+    .hero {
+      position: relative;
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(135deg, #271754 0%, #16183b 55%, #36154a 100%);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      box-shadow: 0 10px 28px rgba(12, 8, 32, 0.7);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "💎";
+      position: absolute;
+      right: 16px;
+      top: 10px;
+      font-size: 48px;
+      opacity: 0.28;
+      pointer-events: none;
+    }
+
+    .hero h2 {
+      margin: 0 0 6px;
+      font-size: 1.12rem;
+      line-height: 1.25;
+      max-width: 78%;
+    }
+
+    .hero p {
+      margin: 0 0 12px;
+      font-size: 0.8rem;
+      color: #c7c3e6;
+    }
+
+    .hero-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 16px;
+      font-weight: 700;
+      font-size: 0.84rem;
+      color: #fff;
+      background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
+      cursor: pointer;
+    }
+
+    /* Поиск */
+    .search-box {
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .search-box.show {
+      display: block;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    /* Категории */
+    .cats {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+
+    .cats::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cat-pill {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s;
+    }
+
+    .cat-pill.active {
+      color: #fff;
+      border-color: #a855f7;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(59, 130, 246, 0.25));
+      box-shadow: 0 0 14px rgba(139, 92, 246, 0.35);
+    }
+
+    /* Заголовок секции */
+    .sec-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sec-head h3 {
+      margin: 0;
+      font-size: 0.98rem;
+    }
+
+    .active-indicator {
+      font-size: 0.75rem;
+      color: #c084fc;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+
+    /* Сетка карточек */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px;
+    }
+
+    .theme-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      transition: transform 0.14s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .theme-card.installed {
+      border-color: #a855f7;
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.32);
+    }
+
+    .preview-box {
+      height: 92px;
+      border-radius: 12px;
+      padding: 8px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .fav-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(10, 10, 22, 0.65);
+      color: #fff;
+      font-size: 13px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .fav-btn.liked {
+      color: #f43f5e;
+      border-color: rgba(244, 63, 94, 0.6);
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .mini-key {
+      flex: 1;
+      height: 15px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      font-size: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .reaction-badge {
+      font-size: 0.72rem;
+      color: #c4b5fd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .cat-tag {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .install-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(90deg, #8b5cf6, #6366f1);
+      cursor: pointer;
+    }
+
+    .theme-card.installed .install-btn {
+      background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    /* Тестовая зона и клавиатура */
+    .sandbox-panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .sandbox-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sandbox-top strong {
+      font-size: 0.9rem;
+    }
+
+    .reaction-log {
+      font-size: 0.76rem;
+      color: #a5f3fc;
+      background: rgba(6, 182, 212, 0.14);
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+
+    .test-screen {
+      width: 100%;
+      min-height: 76px;
+      max-height: 120px;
+      overflow-y: auto;
+      background: #0a0917;
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 1rem;
+      line-height: 1.4;
+      color: #fff;
+      word-break: break-word;
+      user-select: text;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.05em;
+      background: #a855f7;
+      vertical-align: text-bottom;
+      animation: blink 0.9s infinite;
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    .sandbox-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-chip-btn {
+      border: 1px solid var(--card-border);
+      background: var(--bg-2);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      cursor: pointer;
+    }
+
+    /* Виртуальная клавиатура с фоном */
+    .keyboard-dock {
+      position: relative;
+      border-radius: 18px;
+      padding: 8px 6px 10px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+      transition: all 0.3s ease;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .keyboard-dock.glitch-hit {
+      transform: translateX(3px) skewX(-2deg);
+      filter: hue-rotate(35deg) contrast(1.25);
+    }
+
+    .kb-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 6px 6px;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.82);
+      gap: 6px;
+    }
+
+    .kb-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .kb-row {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .key {
+      flex: 1;
+      min-width: 0;
+      height: 42px;
+      border-radius: 9px;
+      border: 1px solid var(--key-border);
+      background: var(--key-bg);
+      color: var(--key-text);
+      font-size: 0.98rem;
+      font-weight: 600;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.06s ease, box-shadow 0.12s ease, background 0.12s ease;
+      backdrop-filter: blur(2px);
+    }
+
+    .key.wide {
+      flex: 1.45;
+      font-size: 0.82rem;
+    }
+
+    .key.space {
+      flex: 4.2;
+      font-size: 0.8rem;
+    }
+
+    .key.pressed {
+      transform: scale(0.92) translateY(1px);
+      box-shadow: 0 0 18px var(--key-glow), inset 0 0 12px rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Крупные вылетающие визуальные эффекты */
+    .fx-pop {
+      position: fixed;
+      pointer-events: none;
+      font-size: 1.55rem;
+      line-height: 1;
+      z-index: 999;
+      filter: drop-shadow(0 0 10px var(--fx-color, #a855f7));
+      animation: fxFly 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .fx-ring {
+      position: fixed;
+      pointer-events: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--fx-color, #a855f7);
+      box-shadow: 0 0 12px var(--fx-color, #a855f7);
+      z-index: 998;
+      animation: ringExpand 0.45s ease-out forwards;
+    }
+
+    @keyframes fxFly {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.4) rotate(-15deg);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(calc(-50% + var(--dx, 0px) * 0.3), -16px) scale(1.25) rotate(8deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx, 0px)), -64px) scale(0.85) rotate(var(--rot, 25deg));
+      }
+    }
+
+    @keyframes ringExpand {
+      0% {
+        opacity: 0.95;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.4);
+      }
+    }
+
+    /* Нижняя навигация */
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 520px;
+      background: rgba(14, 12, 29, 0.94);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--card-border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 8px 10px 10px;
+      z-index: 50;
+    }
+
+    .nav-item {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .nav-item.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.2));
+    }
+
+    .badge-count {
+      position: absolute;
+      top: 1px;
+      right: 26%;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-badge">👑</div>
+        <div>
+          <h1>Key<span>Style</span></h1>
+          <small>10 клавиатур с уникальными звуками</small>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="btnSearchToggle" title="Поиск">🔍</button>
+        <button class="icon-btn active" id="btnSoundToggle" title="Звук реакций">🔊</button>
+      </div>
+    </header>
+
+    <div class="search-box" id="searchBox">
+      <input type="search" id="searchInput" placeholder="Найти клавиатуру или эффект..." />
+    </div>
+
+    <!-- Вкладка 1: Каталог -->
+    <section id="tabCatalog">
+      <div class="hero">
+        <h2>У каждой из 10 клавиатур свой звук 💎</h2>
+        <p>Хрусталь, лазер, пузырьки, клинок, аккорд, бит и глитч — без повторов.</p>
+        <button class="hero-btn" id="btnOpenTestHero">Протестировать активную →</button>
+      </div>
+
+      <div class="cats" id="catsBar"></div>
+
+      <div class="sec-head">
+        <h3 id="catalogTitle">🔥 Все клавиатуры (10)</h3>
+        <span class="active-indicator" id="activeBadge">Активна: Crystal Magic</span>
+      </div>
+
+      <div class="grid" id="themesGrid"></div>
+    </section>
+
+    <!-- Вкладка 2: Избранное -->
+    <section id="tabFavorites" class="hidden">
+      <div class="sec-head">
+        <h3>⭐ Избранные клавиатуры</h3>
+      </div>
+      <div class="grid" id="favGrid"></div>
+    </section>
+
+    <!-- Вкладка 3: Живой тест клавиатуры -->
+    <section id="tabTest" class="hidden">
+      <div class="sandbox-panel">
+        <div class="sandbox-top">
+          <strong id="testThemeName">Тест: Crystal Magic</strong>
+          <span class="reaction-log" id="reactionLog">Эффект: 💎 Алмазы + Звон</span>
+        </div>
+        <div class="test-screen" id="testScreen">
+          <span id="typedText"></span><span class="cursor"></span>
+        </div>
+        <div class="sandbox-controls">
+          <button class="mini-chip-btn" id="btnCopyText">📋 Копировать</button>
+          <button class="mini-chip-btn" id="btnClearText">🧹 Очистить</button>
+          <button class="mini-chip-btn" id="btnSwitchNext">🎨 Сменить тему</button>
+        </div>
+      </div>
+
+      <div class="keyboard-dock" id="keyboardDock">
+        <div class="kb-status">
+          <span id="kbReactionDesc">💎 Эффект: Вылет алмазов и кристаллов</span>
+          <span id="comboCounter">Комбо: 0</span>
+        </div>
+        <div class="kb-rows" id="kbRows"></div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab="catalog">
+      <span>🏠</span>
+      <span>Главная</span>
+    </button>
+    <button class="nav-item" data-tab="favorites">
+      <span>⭐</span>
+      <span>Избранное</span>
+      <span class="badge-count" id="favCount">2</span>
+    </button>
+    <button class="nav-item" data-tab="test">
+      <span>⌨️</span>
+      <span>Клавиатура</span>
+    </button>
+  </nav>
+
+  <script>
+    const THEMES = [
+      {
+        id: 'crystal',
+        name: 'Crystal Magic',
+        cat: 'Милые',
+        soundType: 'crystal',
+        reactionLabel: '💎 Алмазы + Хрусталь',
+        reactionDesc: '💎 Звук: Хрустальный колокольчик',
+        previewBg: 'linear-gradient(135deg, #1e1b4b, #6366f1)',
+        kbBg: 'linear-gradient(180deg, #131233 0%, #1d1b4b 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cpolygon points='200,22 255,75 200,178 145,75' fill='none' stroke='%23818cf8' stroke-width='2.5' opacity='0.28'/%3E%3Cpolygon points='200,45 235,78 200,148 165,78' fill='%23a5b4fc' opacity='0.1'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(165, 180, 252, 0.16)',
+        keyBorder: 'rgba(199, 210, 254, 0.5)',
+        keyGlow: 'rgba(129, 140, 248, 0.7)',
+        sparkColor: '#60a5fa',
+        sparks: ['💎', '💠', '💎', '✨', '❄️'],
+        vibe: 12
+      },
+      {
+        id: 'cyber',
+        name: 'Cyber Neon',
+        cat: 'Неоновые',
+        soundType: 'cyber',
+        reactionLabel: '⚡ Молнии + Синт',
+        reactionDesc: '⚡ Звук: Кибер-срез + молнии',
+        previewBg: 'linear-gradient(135deg, #1d1147, #0ea5e9)',
+        kbBg: 'linear-gradient(180deg, #120d2b 0%, #09152b 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cpath d='M200 20 L380 120 L200 170 L20 120 Z' fill='none' stroke='%230ea5e9' stroke-width='2' opacity='0.3'/%3E%3Ccircle cx='200' cy='95' r='60' fill='none' stroke='%238b5cf6' stroke-width='4' opacity='0.35'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(56, 189, 248, 0.14)',
+        keyBorder: 'rgba(56, 189, 248, 0.5)',
+        keyGlow: 'rgba(56, 189, 248, 0.7)',
+        sparkColor: '#38bdf8',
+        sparks: ['⚡', '⚡', '💠', '🔋'],
+        vibe: 15
+      },
+      {
+        id: 'arcade8',
+        name: '8-Bit Arcade',
+        cat: 'Игровые',
+        soundType: 'arcade8',
+        reactionLabel: '⭐ Звёзды + 8-Бит',
+        reactionDesc: '⭐ Звук: Ретро-писк 8-бит',
+        previewBg: 'linear-gradient(135deg, #311042, #ec4899)',
+        kbBg: 'linear-gradient(180deg, #1e0b2e 0%, #2d1038 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='4' height='4' fill='%23ec4899' opacity='0.18'/%3E%3Crect x='14' y='14' width='4' height='4' fill='%23a855f7' opacity='0.18'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(236, 72, 153, 0.18)',
+        keyBorder: 'rgba(244, 114, 182, 0.55)',
+        keyGlow: 'rgba(236, 72, 153, 0.7)',
+        sparkColor: '#f472b6',
+        sparks: ['⭐', '🪙', '❤️', '👾'],
+        vibe: 18
+      },
+      {
+        id: 'horror',
+        name: 'Horror Glitch',
+        cat: 'Хоррор',
+        soundType: 'horror',
+        reactionLabel: '☠️ Черепа + Глитч',
+        reactionDesc: '☠️ Звук: Глухой бас + сбой экрана',
+        previewBg: 'linear-gradient(135deg, #2b090c, #991b1b)',
+        kbBg: 'linear-gradient(180deg, #180709 0%, #2b0b0e 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M40 160 C50 100 150 100 160 160 L170 180 L30 180 Z' fill='%23991b1b' opacity='0.16'/%3E%3Ccircle cx='50' cy='165' r='16' fill='%23b91c1c' opacity='0.18'/%3E%3Ccircle cx='150' cy='165' r='16' fill='%23b91c1c' opacity='0.18'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(239, 68, 68, 0.16)',
+        keyBorder: 'rgba(248, 113, 113, 0.5)',
+        keyGlow: 'rgba(239, 68, 68, 0.7)',
+        sparkColor: '#f87171',
+        sparks: ['☠️', '🩸', '👁️', '💀'],
+        vibe: 30
+      },
+      {
+        id: 'gaming',
+        name: 'Gaming Pro',
+        cat: 'Игровые',
+        soundType: 'gaming',
+        reactionLabel: '🔥 Огонь + Свитч',
+        reactionDesc: '🔥 Звук: Механический свитч',
+        previewBg: 'linear-gradient(135deg, #064e3b, #10b981)',
+        kbBg: 'linear-gradient(180deg, #091c18 0%, #0d2b24 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cpolygon points='200,25 340,100 200,175 60,100' fill='none' stroke='%2310b981' stroke-width='2' opacity='0.25'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(16, 185, 129, 0.16)',
+        keyBorder: 'rgba(52, 211, 153, 0.5)',
+        keyGlow: 'rgba(16, 185, 129, 0.7)',
+        sparkColor: '#34d399',
+        sparks: ['🔥', '👑', '⚡', '🎯'],
+        vibe: 16
+      },
+      {
+        id: 'drumpad',
+        name: 'Drum Beat',
+        cat: 'Музыка',
+        soundType: 'drum',
+        reactionLabel: '🥁 Бит + Ноты',
+        reactionDesc: '🥁 Звук: Бочка, бас и хэт',
+        previewBg: 'linear-gradient(135deg, #2e1065, #9333ea)',
+        kbBg: 'linear-gradient(180deg, #190938 0%, #2a1052 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Ccircle cx='200' cy='100' r='42' fill='none' stroke='%23c084fc' stroke-width='2' opacity='0.25'/%3E%3Ccircle cx='200' cy='100' r='76' fill='none' stroke='%23a855f7' stroke-width='1.5' opacity='0.2'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(192, 132, 252, 0.16)',
+        keyBorder: 'rgba(216, 180, 254, 0.5)',
+        keyGlow: 'rgba(192, 132, 252, 0.7)',
+        sparkColor: '#d8b4fe',
+        sparks: ['🥁', '🎵', '🎶', '🔊'],
+        vibe: 22
+      },
+      {
+        id: 'space',
+        name: 'Space Galaxy',
+        cat: 'Космос',
+        soundType: 'space',
+        reactionLabel: '🪐 Планеты + Лазер',
+        reactionDesc: '🪐 Звук: Космический лазер-свип',
+        previewBg: 'linear-gradient(135deg, #0f172a, #2563eb)',
+        kbBg: 'linear-gradient(180deg, #070b1a 0%, #101d42 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cellipse cx='200' cy='100' rx='135' ry='48' fill='none' stroke='%2360a5fa' stroke-width='2' opacity='0.25'/%3E%3Ccircle cx='200' cy='100' r='28' fill='%233b82f6' opacity='0.14'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(96, 165, 250, 0.16)',
+        keyBorder: 'rgba(147, 197, 253, 0.5)',
+        keyGlow: 'rgba(59, 130, 246, 0.7)',
+        sparkColor: '#93c5fd',
+        sparks: ['🪐', '🌌', '☄️', '✨'],
+        vibe: 12
+      },
+      {
+        id: 'sakura',
+        name: 'Pink Sakura',
+        cat: 'Милые',
+        soundType: 'sakura',
+        reactionLabel: '🌸 Лепестки + Пузырь',
+        reactionDesc: '🌸 Звук: Нежный пузырьковый звон',
+        previewBg: 'linear-gradient(135deg, #4a0d34, #f472b6)',
+        kbBg: 'linear-gradient(180deg, #26071b 0%, #3d0c2c 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Ccircle cx='120' cy='90' r='36' fill='%23f472b6' opacity='0.12'/%3E%3Ccircle cx='280' cy='115' r='44' fill='%23ec4899' opacity='0.12'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(244, 114, 182, 0.16)',
+        keyBorder: 'rgba(251, 207, 232, 0.5)',
+        keyGlow: 'rgba(244, 114, 182, 0.7)',
+        sparkColor: '#f9a8d4',
+        sparks: ['🌸', '💖', '🎀', '🌷'],
+        vibe: 10
+      },
+      {
+        id: 'ninja',
+        name: 'Shadow Ninja',
+        cat: 'Игровые',
+        soundType: 'ninja',
+        reactionLabel: '🥷 Клинки + Свист',
+        reactionDesc: '🥷 Звук: Острый клинок-свист',
+        previewBg: 'linear-gradient(135deg, #18181b, #64748b)',
+        kbBg: 'linear-gradient(180deg, #0b0c10 0%, #171923 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cline x1='80' y1='165' x2='320' y2='35' stroke='%2394a3b8' stroke-width='2' opacity='0.22'/%3E%3Cline x1='95' y1='35' x2='305' y2='165' stroke='%23cbd5e1' stroke-width='1.5' opacity='0.16'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(148, 163, 184, 0.15)',
+        keyBorder: 'rgba(203, 213, 225, 0.45)',
+        keyGlow: 'rgba(148, 163, 184, 0.65)',
+        sparkColor: '#e2e8f0',
+        sparks: ['🥷', '🗡️', '🌑', '⚔️'],
+        vibe: 17
+      },
+      {
+        id: 'gold',
+        name: 'Gold Luxury',
+        cat: 'Неоновые',
+        soundType: 'gold',
+        reactionLabel: '👑 Золото + Аккорд',
+        reactionDesc: '👑 Звук: Объёмный двойной аккорд',
+        previewBg: 'linear-gradient(135deg, #451a03, #f59e0b)',
+        kbBg: 'linear-gradient(180deg, #1f1004 0%, #361c06 100%)',
+        svgBg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cpolygon points='200,28 248,100 200,172 152,100' fill='none' stroke='%23fbbf24' stroke-width='2' opacity='0.26'/%3E%3C/svg%3E\")",
+        keyBg: 'rgba(251, 191, 36, 0.16)',
+        keyBorder: 'rgba(253, 224, 71, 0.5)',
+        keyGlow: 'rgba(245, 158, 11, 0.7)',
+        sparkColor: '#fbbf24',
+        sparks: ['👑', '💰', '✨', '🏆'],
+        vibe: 14
+      }
+    ];
+
+    const LAYOUTS = {
+      ru: [
+        ['й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х'],
+        ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
+        ['SHIFT', 'я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', 'BACK'],
+        ['123', 'LANG', 'SPACE', '.', 'ENTER']
+      ],
+      en: [
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+        ['SHIFT', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'BACK'],
+        ['123', 'LANG', 'SPACE', '.', 'ENTER']
+      ],
+      num: [
+        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+        ['@', '#', '$', '_', '&', '-', '+', '(', ')', '/'],
+        ['*', '"', "'", ':', ';', '!', '?', 'BACK'],
+        ['ABC', 'LANG', 'SPACE', ',', 'ENTER']
+      ]
+    };
+
+    const state = {
+      activeThemeId: localStorage.getItem('ks_active_theme') || 'crystal',
+      favorites: new Set(JSON.parse(localStorage.getItem('ks_favs') || '["crystal","cyber"]')),
+      category: 'Все',
+      search: '',
+      soundOn: true,
+      lang: 'ru',
+      isNum: false,
+      shift: false,
+      typed: 'У каждой клавиатуры теперь свой звук 💎 ',
+      combo: 0,
+      lastTapTime: 0
+    };
+
+    let audioCtx = null;
+
+    function getAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTone(ctx, type, startFreq, endFreq, duration, peakGain, startOffset = 0) {
+      const now = ctx.currentTime + startOffset;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(startFreq, now);
+      if (endFreq !== startFreq) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+      }
+      gain.gain.setValueAtTime(peakGain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration + 0.01);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.015);
+    }
+
+    function playReactionSound(soundType, keyIndex) {
+      if (!state.soundOn) return;
+      const ctx = getAudio();
+      if (!ctx) return;
+
+      if (soundType === 'crystal') {
+        const chime = [523.25, 659.25, 783.99, 1046.5, 1174.66][keyIndex % 5];
+        playTone(ctx, 'sine', chime, chime, 0.16, 0.13);
+      } else if (soundType === 'cyber') {
+        const base = 360 + (keyIndex % 10) * 35;
+        playTone(ctx, 'sawtooth', base, 110, 0.065, 0.11);
+      } else if (soundType === 'arcade8') {
+        const notes = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3];
+        const freq = notes[keyIndex % notes.length];
+        playTone(ctx, 'square', freq, freq, 0.03, 0.08, 0);
+        playTone(ctx, 'square', freq * 1.25, freq * 1.25, 0.05, 0.07, 0.03);
+      } else if (soundType === 'horror') {
+        playTone(ctx, 'sawtooth', 98, 52, 0.14, 0.16);
+      } else if (soundType === 'gaming') {
+        playTone(ctx, 'triangle', 540 + (keyIndex % 6) * 20, 150, 0.04, 0.15);
+      } else if (soundType === 'drum') {
+        const mode = keyIndex % 3;
+        if (mode === 0) playTone(ctx, 'sine', 150, 42, 0.11, 0.22);
+        else if (mode === 1) playTone(ctx, 'triangle', 220, 75, 0.09, 0.16);
+        else playTone(ctx, 'square', 780, 210, 0.05, 0.09);
+      } else if (soundType === 'space') {
+        const start = 920 + (keyIndex % 7) * 80;
+        playTone(ctx, 'sine', start, 190, 0.11, 0.12);
+      } else if (soundType === 'sakura') {
+        const bubble = 680 + (keyIndex % 6) * 95;
+        playTone(ctx, 'sine', bubble * 0.8, bubble * 1.35, 0.07, 0.11);
+      } else if (soundType === 'ninja') {
+        playTone(ctx, 'sawtooth', 1450, 320, 0.045, 0.1);
+      } else if (soundType === 'gold') {
+        const root = [392.0, 440.0, 493.88, 523.25][keyIndex % 4];
+        playTone(ctx, 'triangle', root, root, 0.14, 0.11, 0);
+        playTone(ctx, 'sine', root * 1.5, root * 1.5, 0.15, 0.09, 0.015);
+      }
+    }
+
+    function spawnVisualEffect(el, theme) {
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      const ring = document.createElement('span');
+      ring.className = 'fx-ring';
+      ring.style.left = `${cx}px`;
+      ring.style.top = `${cy}px`;
+      ring.style.setProperty('--fx-color', theme.sparkColor);
+      document.body.appendChild(ring);
+      setTimeout(() => ring.remove(), 460);
+
+      const pop = document.createElement('span');
+      pop.className = 'fx-pop';
+      pop.style.left = `${cx}px`;
+      pop.style.top = `${rect.top - 2}px`;
+      pop.style.setProperty('--fx-color', theme.sparkColor);
+      const dx = Math.round((Math.random() - 0.5) * 44);
+      const rot = Math.round((Math.random() - 0.5) * 60);
+      pop.style.setProperty('--dx', `${dx}px`);
+      pop.style.setProperty('--rot', `${rot}deg`);
+
+      const list = theme.sparks;
+      pop.textContent = list[Math.floor(Math.random() * list.length)];
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), 710);
+    }
+
+    function getActiveTheme() {
+      return THEMES.find((t) => t.id === state.activeThemeId) || THEMES[0];
+    }
+
+    function applyThemeToKeyboard() {
+      const theme = getActiveTheme();
+      const dock = document.getElementById('keyboardDock');
+      dock.style.setProperty('--kb-bg', theme.kbBg);
+      dock.style.setProperty('background-image', theme.svgBg ? `${theme.svgBg}, ${theme.kbBg}` : theme.kbBg);
+      dock.style.setProperty('--key-bg', theme.keyBg);
+      dock.style.setProperty('--key-border', theme.keyBorder);
+      dock.style.setProperty('--key-glow', theme.keyGlow);
+
+      document.getElementById('activeBadge').textContent = `Активна: ${theme.name}`;
+      document.getElementById('testThemeName').textContent = `Тест: ${theme.name}`;
+      document.getElementById('reactionLog').textContent = `Эффект: ${theme.reactionLabel}`;
+      document.getElementById('kbReactionDesc').textContent = theme.reactionDesc;
+    }
+
+    function renderCategories() {
+      const categories = [
+        { name: 'Все', icon: '⭐' },
+        { name: 'Милые', icon: '💎' },
+        { name: 'Неоновые', icon: '⚡' },
+        { name: 'Игровые', icon: '🎮' },
+        { name: 'Музыка', icon: '🥁' },
+        { name: 'Космос', icon: '🪐' },
+        { name: 'Хоррор', icon: '☠️' }
+      ];
+
+      const bar = document.getElementById('catsBar');
+      bar.innerHTML = categories.map((c) => `
+        <button class="cat-pill ${state.category === c.name ? 'active' : ''}" data-cat="${c.name}">
+          <span>${c.icon}</span>
+          <span>${c.name}</span>
+        </button>
+      `).join('');
+    }
+
+    function buildCardHtml(theme) {
+      const isInstalled = theme.id === state.activeThemeId;
+      const isLiked = state.favorites.has(theme.id);
+      return `
+        <article class="theme-card ${isInstalled ? 'installed' : ''}" data-id="${theme.id}">
+          <div class="preview-box" style="background:${theme.previewBg}">
+            <button class="fav-btn ${isLiked ? 'liked' : ''}" data-action="fav" title="В избранное">
+              ${isLiked ? '♥' : '♡'}
+            </button>
+            <div class="mini-row">
+              <span class="mini-key">Q</span><span class="mini-key">W</span><span class="mini-key">E</span><span class="mini-key">R</span><span class="mini-key">T</span><span class="mini-key">Y</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-key">A</span><span class="mini-key">S</span><span class="mini-key">D</span><span class="mini-key">F</span><span class="mini-key">G</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-key">⇧</span><span class="mini-key">Z</span><span class="mini-key">X</span><span class="mini-key">C</span><span class="mini-key">⌫</span>
+            </div>
+          </div>
+          <div class="card-info">
+            <div class="card-title">${theme.name}</div>
+            <div class="reaction-badge">${theme.reactionLabel}</div>
+          </div>
+          <div class="card-footer">
+            <span class="cat-tag">${theme.cat}</span>
+            <button class="install-btn" data-action="install">
+              ${isInstalled ? 'Активна ✓' : 'Установить'}
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderCards() {
+      const q = state.search.trim().toLowerCase();
+      const filtered = THEMES.filter((t) => {
+        const matchCat = state.category === 'Все' || t.cat === state.category;
+        const matchQ = !q || `${t.name} ${t.cat} ${t.reactionLabel}`.toLowerCase().includes(q);
+        return matchCat && matchQ;
+      });
+
+      document.getElementById('catalogTitle').textContent =
+        state.category === 'Все' && !q
+          ? `🔥 Все клавиатуры (${THEMES.length})`
+          : `Найдено: ${filtered.length}`;
+
+      document.getElementById('themesGrid').innerHTML = filtered.length
+        ? filtered.map(buildCardHtml).join('')
+        : '<p style="color:#9894b8;grid-column:1/-1;text-align:center;">Ничего не найдено</p>';
+
+      const favList = THEMES.filter((t) => state.favorites.has(t.id));
+      document.getElementById('favCount').textContent = String(favList.length);
+      document.getElementById('favGrid').innerHTML = favList.length
+        ? favList.map(buildCardHtml).join('')
+        : '<p style="color:#9894b8;grid-column:1/-1;text-align:center;">Нажми ♡ на любой клавиатуре, чтобы добавить сюда.</p>';
+    }
+
+    function renderKeyboard() {
+      const rowsEl = document.getElementById('kbRows');
+      const rows = state.isNum ? LAYOUTS.num : LAYOUTS[state.lang];
+      let idx = 0;
+
+      rowsEl.innerHTML = rows.map((row) => {
+        const keysHtml = row.map((k) => {
+          idx++;
+          let label = k;
+          let extraClass = '';
+          if (k === 'SHIFT') {
+            label = state.shift ? '⬆' : '⇧';
+            extraClass = 'wide';
+          } else if (k === 'BACK') {
+            label = '⌫';
+            extraClass = 'wide';
+          } else if (k === '123' || k === 'ABC') {
+            extraClass = 'wide';
+          } else if (k === 'LANG') {
+            label = state.lang === 'ru' ? '🌐 RU' : '🌐 EN';
+            extraClass = 'wide';
+          } else if (k === 'SPACE') {
+            label = 'пробел';
+            extraClass = 'space';
+          } else if (k === 'ENTER') {
+            label = '↵';
+            extraClass = 'wide';
+          } else if (state.shift && k.length === 1) {
+            label = k.toUpperCase();
+          }
+
+          return `<button type="button" class="key ${extraClass}" data-key="${k}" data-idx="${idx}">${label}</button>`;
+        }).join('');
+        return `<div class="kb-row">${keysHtml}</div>`;
+      }).join('');
+    }
+
+    function updateTextScreen() {
+      document.getElementById('typedText').textContent = state.typed;
+      const screen = document.getElementById('testScreen');
+      screen.scrollTop = screen.scrollHeight;
+    }
+
+    function switchTab(tabName) {
+      document.getElementById('tabCatalog').classList.toggle('hidden', tabName !== 'catalog');
+      document.getElementById('tabFavorites').classList.toggle('hidden', tabName !== 'favorites');
+      document.getElementById('tabTest').classList.toggle('hidden', tabName !== 'test');
+
+      document.querySelectorAll('.nav-item').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+    }
+
+    function handleCardAction(e) {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const card = btn.closest('.theme-card');
+      const id = card?.dataset.id;
+      if (!id) return;
+
+      if (btn.dataset.action === 'fav') {
+        if (state.favorites.has(id)) state.favorites.delete(id);
+        else state.favorites.add(id);
+        localStorage.setItem('ks_favs', JSON.stringify([...state.favorites]));
+        renderCards();
+      } else if (btn.dataset.action === 'install') {
+        state.activeThemeId = id;
+        localStorage.setItem('ks_active_theme', id);
+        applyThemeToKeyboard();
+        renderCards();
+        switchTab('test');
+      }
+    }
+
+    document.getElementById('themesGrid').addEventListener('click', handleCardAction);
+    document.getElementById('favGrid').addEventListener('click', handleCardAction);
+
+    document.getElementById('catsBar').addEventListener('click', (e) => {
+      const pill = e.target.closest('.cat-pill');
+      if (!pill) return;
+      state.category = pill.dataset.cat;
+      renderCategories();
+      renderCards();
+    });
+
+    document.querySelectorAll('.nav-item').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    document.getElementById('btnOpenTestHero').addEventListener('click', () => switchTab('test'));
+
+    document.getElementById('btnSearchToggle').addEventListener('click', () => {
+      const box = document.getElementById('searchBox');
+      box.classList.toggle('show');
+      if (box.classList.contains('show')) {
+        switchTab('catalog');
+        document.getElementById('searchInput').focus();
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      state.search = e.target.value;
+      renderCards();
+    });
+
+    document.getElementById('btnSoundToggle').addEventListener('click', (e) => {
+      state.soundOn = !state.soundOn;
+      e.currentTarget.textContent = state.soundOn ? '🔊' : '🔇';
+      e.currentTarget.classList.toggle('active', state.soundOn);
+    });
+
+    document.getElementById('kbRows').addEventListener('pointerdown', (e) => {
+      const keyBtn = e.target.closest('.key');
+      if (!keyBtn) return;
+      e.preventDefault();
+
+      const rawKey = keyBtn.dataset.key;
+      const idx = Number(keyBtn.dataset.idx) || 1;
+      const theme = getActiveTheme();
+
+      keyBtn.classList.add('pressed');
+      setTimeout(() => keyBtn.classList.remove('pressed'), 120);
+
+      const now = Date.now();
+      state.combo = now - state.lastTapTime < 1400 ? state.combo + 1 : 1;
+      state.lastTapTime = now;
+      document.getElementById('comboCounter').textContent = `Комбо: ${state.combo}`;
+
+      playReactionSound(theme.soundType, idx);
+      spawnVisualEffect(keyBtn, theme);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(theme.vibe);
+      }
+
+      if (theme.id === 'horror' && state.combo % 5 === 0) {
+        const dock = document.getElementById('keyboardDock');
+        dock.classList.add('glitch-hit');
+        setTimeout(() => dock.classList.remove('glitch-hit'), 140);
+      }
+
+      if (rawKey === 'SHIFT') {
+        state.shift = !state.shift;
+        renderKeyboard();
+      } else if (rawKey === 'BACK') {
+        state.typed = state.typed.slice(0, -1);
+      } else if (rawKey === '123') {
+        state.isNum = true;
+        renderKeyboard();
+      } else if (rawKey === 'ABC') {
+        state.isNum = false;
+        renderKeyboard();
+      } else if (rawKey === 'LANG') {
+        state.isNum = false;
+        state.lang = state.lang === 'ru' ? 'en' : 'ru';
+        renderKeyboard();
+      } else if (rawKey === 'SPACE') {
+        state.typed += ' ';
+      } else if (rawKey === 'ENTER') {
+        state.typed += '\n';
+      } else {
+        const ch = state.shift ? rawKey.toUpperCase() : rawKey;
+        state.typed += ch;
+        if (state.shift) {
+          state.shift = false;
+          renderKeyboard();
+        }
+      }
+
+      updateTextScreen();
+    });
+
+    document.getElementById('btnClearText').addEventListener('click', () => {
+      state.typed = '';
+      state.combo = 0;
+      document.getElementById('comboCounter').textContent = 'Комбо: 0';
+      updateTextScreen();
+    });
+
+    document.getElementById('btnCopyText').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(state.typed);
+        document.getElementById('reactionLog').textContent = 'Скопировано в буфер ✓';
+      } catch {
+        document.getElementById('reactionLog').textContent = 'Не удалось скопировать';
+      }
+    });
+
+    document.getElementById('btnSwitchNext').addEventListener('click', () => {
+      const i = THEMES.findIndex((t) => t.id === state.activeThemeId);
+      const next = THEMES[(i + 1) % THEMES.length];
+      state.activeThemeId = next.id;
+      localStorage.setItem('ks_active_theme', next.id);
+      applyThemeToKeyboard();
+      renderCards();
+    });
+
+    renderCategories();
+    renderCards();
+    renderKeyboard();
+    applyThemeToKeyboard();
+    updateTextScreen();
+  </script>
+</body>
+</html>
