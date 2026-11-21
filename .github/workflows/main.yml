@@ -39,11 +39,18 @@ jobs:
 
           write_file("settings.gradle.kts", """
           pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal() }
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
           }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral() }
+              repositories {
+                  google()
+                  mavenCentral()
+              }
           }
           rootProject.name = "VoidKeys"
           include(":app")
@@ -61,9 +68,11 @@ jobs:
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
           }
+
           android {
               namespace = "com.example.voidkeys"
               compileSdk = 34
+
               defaultConfig {
                   applicationId = "com.example.voidkeys"
                   minSdk = 21
@@ -71,13 +80,23 @@ jobs:
                   versionCode = 1
                   versionName = "1.0"
               }
-              buildTypes { release { isMinifyEnabled = false } }
+
+              buildTypes {
+                  release {
+                      isMinifyEnabled = false
+                  }
+              }
+
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
               }
-              kotlinOptions { jvmTarget = "17" }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
           }
+
           dependencies {
               implementation("androidx.core:core-ktx:1.13.1")
               implementation("androidx.appcompat:appcompat:1.7.0")
@@ -86,29 +105,48 @@ jobs:
           """)
 
           write_file("app/src/main/res/values/strings.xml", """
-          <resources><string name="app_name">VoidKeys</string></resources>
+          <resources>
+              <string name="app_name">VoidKeys</string>
+          </resources>
           """)
 
           write_file("app/src/main/res/xml/method.xml", """
           <?xml version="1.0" encoding="utf-8"?>
-          <input-method xmlns:android="http://schemas.android.com/apk/res/android" android:isDefault="false" />
+          <input-method xmlns:android="http://schemas.android.com/apk/res/android"
+              android:isDefault="false" />
           """)
 
           write_file("app/src/main/AndroidManifest.xml", """
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.VIBRATE" />
               <uses-permission android:name="android.permission.RECORD_AUDIO" />
-              <application android:allowBackup="true" android:label="@string/app_name" android:supportsRtl="true">
-                  <activity android:name=".MainActivity" android:exported="true">
+
+              <application
+                  android:allowBackup="true"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
-                  <service android:name=".VoidKeysImeService" android:exported="true" android:permission="android.permission.BIND_INPUT_METHOD">
-                      <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
-                      <meta-data android:name="android.view.im" android:resource="@xml/method" />
+
+                  <service
+                      android:name=".VoidKeysImeService"
+                      android:exported="true"
+                      android:permission="android.permission.BIND_INPUT_METHOD">
+                      <intent-filter>
+                          <action android:name="android.view.InputMethod" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.view.im"
+                          android:resource="@xml/method" />
                   </service>
+
               </application>
           </manifest>
           """)
@@ -134,19 +172,27 @@ jobs:
 
           class MainActivity : AppCompatActivity() {
               private val themes = listOf(
-                  Triple("void", "Void Neon 👑", "#1E1B4B"),
-                  Triple("cyber", "Cyber Neon ⚡", "#0E7490"),
-                  Triple("horror", "Horror Glitch ☠️", "#7F1D1D"),
-                  Triple("gaming", "Gaming Pro 🔥", "#065F46"),
-                  Triple("gold", "Gold Luxury 👑", "#92400E")
+                  Triple("void", "Void Neon", "#1E1B4B"),
+                  Triple("cyber", "Cyber Neon", "#0E7490"),
+                  Triple("horror", "Horror Glitch", "#7F1D1D"),
+                  Triple("gaming", "Gaming Pro", "#065F46"),
+                  Triple("gold", "Gold Luxury", "#92400E")
               )
 
+              private lateinit var statusText: TextView
               private lateinit var micStatusText: TextView
 
               private val requestMicPermission =
                   registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
                       refreshMicStatus()
                   }
+
+              private fun refreshStatus() {
+                  val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
+                  val active = prefs.getString("active_theme", "void") ?: "void"
+                  val title = themes.firstOrNull { it.first == active }?.second ?: active
+                  statusText.text = "Активная тема: $title"
+              }
 
               private fun refreshMicStatus() {
                   val granted = ContextCompat.checkSelfPermission(
@@ -163,25 +209,32 @@ jobs:
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
-                  val statusText = TextView(this).apply {
-                      textSize = 16f; setTextColor(Color.WHITE); setPadding(0, 0, 0, 12)
+
+                  statusText = TextView(this).apply {
+                      textSize = 16f
+                      setTextColor(Color.WHITE)
+                      setPadding(0, 0, 0, 12)
                   }
+
                   micStatusText = TextView(this).apply {
-                      textSize = 15f; setTextColor(Color.LTGRAY); setPadding(0, 0, 0, 24)
+                      textSize = 15f
+                      setTextColor(Color.LTGRAY)
+                      setPadding(0, 0, 0, 24)
                   }
-                  fun refreshStatus() {
-                      val active = prefs.getString("active_theme", "void") ?: "void"
-                      val title = themes.firstOrNull { it.first == active }?.second ?: active
-                      statusText.text = "Активная тема: $title"
-                  }
+
                   val root = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
                       setBackgroundColor(Color.parseColor("#0B0917"))
                       setPadding(36, 48, 36, 48)
                   }
+
                   root.addView(TextView(this).apply {
-                      text = "VoidKeys"; textSize = 26f; setTextColor(Color.WHITE); setPadding(0, 0, 0, 8)
+                      text = "VoidKeys"
+                      textSize = 26f
+                      setTextColor(Color.WHITE)
+                      setPadding(0, 0, 0, 8)
                   })
+
                   refreshStatus()
                   refreshMicStatus()
                   root.addView(statusText)
@@ -189,29 +242,67 @@ jobs:
 
                   for ((id, label, hex) in themes) {
                       root.addView(Button(this).apply {
-                          text = "Выбрать: $label"; isAllCaps = false; setTextColor(Color.WHITE)
-                          background = GradientDrawable().apply { setColor(Color.parseColor(hex)); cornerRadius = 24f }
-                          layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 128).apply { bottomMargin = 20 }
-                          setOnClickListener { prefs.edit().putString("active_theme", id).apply(); refreshStatus() }
+                          text = "Выбрать: $label"
+                          isAllCaps = false
+                          setTextColor(Color.WHITE)
+                          background = GradientDrawable().apply {
+                              setColor(Color.parseColor(hex))
+                              cornerRadius = 24f
+                          }
+                          layoutParams = LinearLayout.LayoutParams(
+                              LinearLayout.LayoutParams.MATCH_PARENT,
+                              128
+                          ).apply {
+                              bottomMargin = 20
+                          }
+                          setOnClickListener {
+                              prefs.edit().putString("active_theme", id).apply()
+                              refreshStatus()
+                          }
                       })
                   }
+
                   root.addView(Button(this).apply {
-                      text = "Запросить доступ к микрофону"; isAllCaps = false; setTextColor(Color.WHITE)
+                      text = "Запросить доступ к микрофону"
+                      isAllCaps = false
+                      setTextColor(Color.WHITE)
                       setBackgroundColor(Color.parseColor("#312E81"))
-                      layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 128).apply { topMargin = 8; bottomMargin = 12 }
-                      setOnClickListener { requestMicPermission.launch(Manifest.permission.RECORD_AUDIO) }
+                      layoutParams = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          128
+                      ).apply {
+                          topMargin = 8
+                          bottomMargin = 12
+                      }
+                      setOnClickListener {
+                          requestMicPermission.launch(Manifest.permission.RECORD_AUDIO)
+                      }
                   })
+
                   root.addView(Button(this).apply {
-                      text = "Открыть настройки клавиатур"; isAllCaps = false; setTextColor(Color.WHITE)
+                      text = "Открыть настройки клавиатур"
+                      isAllCaps = false
+                      setTextColor(Color.WHITE)
                       setBackgroundColor(Color.parseColor("#4F46E5"))
-                      layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 128).apply { topMargin = 8 }
-                      setOnClickListener { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+                      layoutParams = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          128
+                      ).apply {
+                          topMargin = 8
+                      }
+                      setOnClickListener {
+                          startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                      }
                   })
-                  setContentView(ScrollView(this).apply { addView(root) })
+
+                  setContentView(ScrollView(this).apply {
+                      addView(root)
+                  })
               }
 
               override fun onResume() {
                   super.onResume()
+                  refreshStatus()
                   refreshMicStatus()
               }
           }
@@ -256,14 +347,20 @@ jobs:
                       .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                       .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                       .build()
-                  soundPool = SoundPool.Builder().setMaxStreams(4).setAudioAttributes(attrs).build()
+                  soundPool = SoundPool.Builder()
+                      .setMaxStreams(4)
+                      .setAudioAttributes(attrs)
+                      .build()
                   clickSoundId = soundPool.load(this, R.raw.click, 1)
-                  soundPool.setOnLoadCompleteListener { _, _, status -> soundLoaded = (status == 0) }
+                  soundPool.setOnLoadCompleteListener { _, _, status ->
+                      soundLoaded = (status == 0)
+                  }
               }
 
               override fun onCreateInputView(): View {
                   rootLayout = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL; setPadding(12, 16, 12, 20)
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(12, 16, 12, 20)
                   }
                   applyTheme()
                   rebuildKeys()
@@ -272,35 +369,75 @@ jobs:
 
               override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
                   super.onStartInputView(info, restarting)
-                  if (::rootLayout.isInitialized) applyTheme()
+                  if (::rootLayout.isInitialized) {
+                      applyTheme()
+                  }
               }
 
               private fun applyTheme() {
                   val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
                   val themeId = prefs.getString("active_theme", "void") ?: "void"
                   val colors = when (themeId) {
-                      "cyber" -> { currentPitch = 1.25f; intArrayOf(Color.parseColor("#120D2B"), Color.parseColor("#09152B")) }
-                      "horror" -> { currentPitch = 0.72f; intArrayOf(Color.parseColor("#180709"), Color.parseColor("#2B0B0E")) }
-                      "gaming" -> { currentPitch = 1.08f; intArrayOf(Color.parseColor("#091C18"), Color.parseColor("#0D2B24")) }
-                      "gold" -> { currentPitch = 0.92f; intArrayOf(Color.parseColor("#1F1004"), Color.parseColor("#361C06")) }
-                      else -> { currentPitch = 1.15f; intArrayOf(Color.parseColor("#131233"), Color.parseColor("#1D1B4B")) }
+                      "cyber" -> {
+                          currentPitch = 1.25f
+                          intArrayOf(Color.parseColor("#120D2B"), Color.parseColor("#09152B"))
+                      }
+                      "horror" -> {
+                          currentPitch = 0.72f
+                          intArrayOf(Color.parseColor("#180709"), Color.parseColor("#2B0B0E"))
+                      }
+                      "gaming" -> {
+                          currentPitch = 1.08f
+                          intArrayOf(Color.parseColor("#091C18"), Color.parseColor("#0D2B24"))
+                      }
+                      "gold" -> {
+                          currentPitch = 0.92f
+                          intArrayOf(Color.parseColor("#1F1004"), Color.parseColor("#361C06"))
+                      }
+                      else -> {
+                          currentPitch = 1.15f
+                          intArrayOf(Color.parseColor("#131233"), Color.parseColor("#1D1B4B"))
+                      }
                   }
-                  rootLayout.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors).apply { cornerRadius = 32f }
+                  rootLayout.background = GradientDrawable(
+                      GradientDrawable.Orientation.TOP_BOTTOM,
+                      colors
+                  ).apply {
+                      cornerRadius = 32f
+                  }
               }
 
               private fun rebuildKeys() {
                   rootLayout.removeAllViews()
                   for (rowKeys in rows) {
                       val rowView = LinearLayout(this).apply {
-                          orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
-                          layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                          orientation = LinearLayout.HORIZONTAL
+                          gravity = Gravity.CENTER
+                          layoutParams = LinearLayout.LayoutParams(
+                              LinearLayout.LayoutParams.MATCH_PARENT,
+                              LinearLayout.LayoutParams.WRAP_CONTENT
+                          ).apply {
+                              topMargin = 8
+                          }
                       }
                       for (label in rowKeys) {
                           rowView.addView(Button(this).apply {
-                              text = label; isAllCaps = false; setTextColor(Color.WHITE); setBackgroundColor(Color.parseColor("#28254A"))
+                              text = label
+                              isAllCaps = false
+                              setTextColor(Color.WHITE)
+                              setBackgroundColor(Color.parseColor("#28254A"))
                               val weight = if (label == "пробел") 3.5f else 1f
-                              layoutParams = LinearLayout.LayoutParams(0, 118, weight).apply { marginStart = 4; marginEnd = 4 }
-                              setOnClickListener { handleKey(label) }
+                              layoutParams = LinearLayout.LayoutParams(
+                                  0,
+                                  118,
+                                  weight
+                              ).apply {
+                                  marginStart = 4
+                                  marginEnd = 4
+                              }
+                              setOnClickListener {
+                                  handleKey(label)
+                              }
                           })
                       }
                       rootLayout.addView(rowView)
@@ -319,18 +456,32 @@ jobs:
               }
 
               private fun playTapEffects() {
-                  if (soundLoaded) soundPool.play(clickSoundId, 0.7f, 0.7f, 1, 0, currentPitch)
+                  if (soundLoaded) {
+                      soundPool.play(clickSoundId, 0.7f, 0.7f, 1, 0, currentPitch)
+                  }
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                       val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                      vm.defaultVibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
+                      vm.defaultVibrator.vibrate(
+                          VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                      )
                   } else {
-                      @Suppress("DEPRECATION") val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vib.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
-                      else @Suppress("DEPRECATION") vib.vibrate(15)
+                      @Suppress("DEPRECATION")
+                      val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                          vib.vibrate(
+                              VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                          )
+                      } else {
+                          @Suppress("DEPRECATION")
+                          vib.vibrate(15)
+                      }
                   }
               }
 
-              override fun onDestroy() { soundPool.release(); super.onDestroy() }
+              override fun onDestroy() {
+                  soundPool.release()
+                  super.onDestroy()
+              }
           }
           """)
 
@@ -345,7 +496,8 @@ jobs:
                   for i in range(frames):
                       env = 1.0 - (i / frames)
                       freq = 620.0 - (i / frames) * 380.0
-                      w.writeframes(struct.pack("<h", int(16000 * env * math.sin(2.0 * math.pi * freq * i / rate))))
+                      sample = int(16000 * env * math.sin(2.0 * math.pi * freq * i / rate))
+                      w.writeframes(struct.pack("<h", sample))
           PY
 
       - name: Build Android App APK
