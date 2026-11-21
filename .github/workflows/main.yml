@@ -19,7 +19,7 @@ jobs:
       - name: Prepare VoidKeys project files
         run: |
           python3 - << 'PY'
-          import os, math, struct, wave, zlib
+          import os, math, struct, wave, zlib, base64
 
           def write_file(path, content, overwrite=False):
               parent = os.path.dirname(path)
@@ -29,22 +29,90 @@ jobs:
                   with open(path, "w", encoding="utf-8") as f:
                       f.write(content.lstrip("\n"))
 
-          def write_png_icon(path, size=96):
+          def write_rich_icon(path, size=192):
               parent = os.path.dirname(path)
               if parent:
                   os.makedirs(parent, exist_ok=True)
               raw = bytearray()
+              cx = size / 2.0
+              cy = size / 2.0
               for y in range(size):
                   raw.append(0)
+                  ny = (y - cy) / (size * 0.5)
                   for x in range(size):
-                      dx = abs(x - size / 2)
-                      dy = abs(y - size / 2)
-                      in_border = (dx > size * 0.34 or dy > size * 0.34) and (dx < size * 0.44 and dy < size * 0.44)
-                      in_core = dx < size * 0.16 and dy < size * 0.16
-                      if in_border or in_core:
-                          raw.extend((129, 140, 248, 255))
-                      else:
-                          raw.extend((18, 16, 48, 255))
+                      nx = (x - cx) / (size * 0.5)
+                      r2 = nx * nx + ny * ny
+
+                      # Тёмно-фиолетовый космический фон с мягким неоновым свечением
+                      glow = max(0.0, 1.0 - r2 * 0.85)
+                      base_r = int(14 + 78 * glow + 26 * max(0.0, -ny))
+                      base_g = int(10 + 26 * glow)
+                      base_b = int(36 + 135 * glow + 35 * max(0.0, nx))
+
+                      # Рамка вокруг всей иконки
+                      edge_dist = max(abs(nx), abs(ny))
+                      if 0.84 <= edge_dist <= 0.92:
+                          base_r = min(255, base_r + 135)
+                          base_g = min(255, base_g + 90)
+                          base_b = 255
+
+                      # Силуэт короны сверху
+                      crown_y = ny + 0.46
+                      if -0.14 <= crown_y <= 0.14:
+                          spiky = abs(((nx * 5.0) % 1.0) - 0.5) * 2.0
+                          if abs(nx) < 0.34 and (crown_y > 0.04 or crown_y > -0.14 + spiky * 0.14):
+                              base_r = 250
+                              base_g = 175
+                              base_b = 255
+
+                      # Наклонная неоновая клавиатура по центру
+                      kx = nx * 0.92 - ny * 0.22
+                      ky = ny * 0.92 + nx * 0.22 - 0.06
+                      if -0.58 <= kx <= 0.58 and -0.26 <= ky <= 0.30:
+                          # Внутренняя подсветка панели клавиатуры
+                          base_r = min(255, base_r + 45)
+                          base_g = min(255, base_g + 35)
+                          base_b = min(255, base_b + 85)
+
+                          # Ряды клавиш
+                          row_hit = False
+                          for row_idx in range(3):
+                              ry = -0.18 + row_idx * 0.13
+                              if abs(ky - ry) < 0.038:
+                                  cell_phase = abs(((kx + 0.50) * 6.5) % 1.0 - 0.5)
+                                  if cell_phase < 0.34:
+                                      row_hit = True
+                                      break
+                          # Пробел внизу клавиатуры
+                          space_hit = (0.17 <= ky <= 0.25 and abs(kx) < 0.24)
+                          # Контур клавиатуры
+                          board_border = (abs(abs(kx) - 0.58) < 0.022 and -0.26 <= ky <= 0.30) or (
+                              abs(ky - (-0.26)) < 0.022 and -0.58 <= kx <= 0.58
+                          ) or (
+                              abs(ky - 0.30) < 0.022 and -0.58 <= kx <= 0.58
+                          )
+
+                          if board_border or row_hit or space_hit:
+                              base_r = 235
+                              base_g = 210
+                              base_b = 255
+
+                      # Искры / звёздочки по бокам
+                      sparkles = [(-0.56, -0.34, 0.06), (0.58, -0.28, 0.05), (0.04, 0.62, 0.065)]
+                      for sx, sy, sr in sparkles:
+                          dx = abs(nx - sx)
+                          dy = abs(ny - sy)
+                          if (dx < sr and dy < sr * 0.22) or (dy < sr and dx < sr * 0.22):
+                              base_r = 245
+                              base_g = 235
+                              base_b = 255
+
+                      raw.extend((
+                          max(0, min(255, base_r)),
+                          max(0, min(255, base_g)),
+                          max(0, min(255, base_b)),
+                          255
+                      ))
 
               def chunk(tag, data):
                   crc = zlib.crc32(tag + data) & 0xFFFFFFFF
@@ -176,170 +244,433 @@ jobs:
           </manifest>
           """, overwrite=True)
 
+          write_file("app/src/main/assets/index.html", """
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <title>VoidKeys</title>
+            <style>
+              * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+              body {
+                margin: 0;
+                font-family: system-ui, -apple-system, sans-serif;
+                background: #0b0718;
+                color: #ffffff;
+                padding-bottom: 86px;
+              }
+              .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 14px 16px;
+                background: rgba(24, 13, 53, 0.95);
+                backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+              }
+              .brand { display: flex; align-items: center; gap: 10px; }
+              .logo-badge {
+                width: 38px; height: 38px; border-radius: 12px;
+                background: linear-gradient(135deg, #7c3aed, #ec4899);
+                display: flex; align-items: center; justify-content: center; font-size: 20px;
+              }
+              .title { font-size: 18px; font-weight: 800; line-height: 1.1; }
+              .subtitle { font-size: 11px; color: #c4b5fd; }
+              .top-actions { display: flex; gap: 8px; }
+              .icon-btn {
+                width: 36px; height: 36px; border-radius: 50%;
+                background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 15px;
+              }
+              .hero {
+                margin: 14px;
+                padding: 18px;
+                border-radius: 22px;
+                background: linear-gradient(135deg, #2e1065 0%, #4c1d95 55%, #1e1b4b 100%);
+                border: 1px solid rgba(196, 181, 253, 0.25);
+              }
+              .hero h2 { margin: 0 0 8px; font-size: 20px; line-height: 1.25; }
+              .hero p { margin: 0 0 14px; font-size: 13px; color: #ddd6fe; line-height: 1.4; }
+              .hero-btn {
+                background: linear-gradient(90deg, #6366f1, #8b5cf6);
+                color: #fff; border: none; border-radius: 12px;
+                padding: 10px 16px; font-weight: 700; font-size: 13px;
+              }
+              .cats {
+                display: flex; gap: 8px; padding: 0 14px 12px; overflow-x: auto;
+              }
+              .cat-pill {
+                border: 1px solid rgba(255,255,255,0.12);
+                background: #17102b; color: #e9d5ff;
+                padding: 8px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+              }
+              .cat-pill.active { background: #7c3aed; border-color: #a78bfa; color: #fff; }
+              .section-head {
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 4px 14px 10px;
+              }
+              .section-head h3 { margin: 0; font-size: 16px; }
+              .active-chip {
+                font-size: 11px; background: rgba(139,92,246,0.22);
+                border: 1px solid rgba(167,139,250,0.4); padding: 4px 10px; border-radius: 999px; color: #ede9fe;
+              }
+              .grid {
+                display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 14px;
+              }
+              .card {
+                background: #150f29; border-radius: 18px; padding: 10px;
+                border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px;
+              }
+              .preview {
+                height: 82px; border-radius: 12px; padding: 8px; position: relative;
+                display: flex; flex-direction: column; justify-content: space-between;
+              }
+              .mini-row { display: flex; justify-content: space-between; gap: 3px; }
+              .mini-key {
+                flex: 1; height: 14px; border-radius: 4px;
+                background: rgba(255,255,255,0.22); font-size: 8px;
+                display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700;
+              }
+              .fav-btn {
+                position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+                border-radius: 50%; border: none; background: rgba(0,0,0,0.45); color: #fff; font-size: 12px;
+              }
+              .card-title { font-size: 14px; font-weight: 800; }
+              .card-sub { font-size: 11px; color: #c4b5fd; }
+              .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+              .card-tag { font-size: 10px; color: #a5b4fc; }
+              .install-btn {
+                border: none; border-radius: 10px; padding: 6px 12px;
+                background: #7c3aed; color: #fff; font-size: 11px; font-weight: 700;
+              }
+              .install-btn.applied { background: #10b981; }
+              .test-box {
+                margin: 14px; padding: 14px; border-radius: 18px;
+                background: #150f29; border: 1px solid rgba(255,255,255,0.1);
+              }
+              .test-box input {
+                width: 100%; padding: 12px; border-radius: 12px;
+                border: 1px solid rgba(167,139,250,0.35); background: #0c071a;
+                color: #fff; font-size: 14px; margin-bottom: 10px;
+              }
+              .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+              .sec-btn {
+                border: 1px solid rgba(255,255,255,0.16); background: #22183d;
+                color: #fff; border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 700;
+              }
+              .bottom-nav {
+                position: fixed; left: 0; right: 0; bottom: 0;
+                display: flex; justify-content: space-around; padding: 10px 8px 14px;
+                background: #140d28; border-top: 1px solid rgba(255,255,255,0.1);
+              }
+              .nav-item {
+                background: none; border: none; color: #a78bfa;
+                font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 3px;
+              }
+              .nav-item.active { color: #ffffff; }
+            </style>
+          </head>
+          <body>
+            <div class="topbar">
+              <div class="brand">
+                <div class="logo-badge">👑</div>
+                <div>
+                  <div class="title">VoidKeys</div>
+                  <div class="subtitle">Клавиатуры с уникальными звуками</div>
+                </div>
+              </div>
+              <div class="top-actions">
+                <button class="icon-btn" onclick="focusTest()">🔍</button>
+                <button class="icon-btn" onclick="askMic()">🎤</button>
+              </div>
+            </div>
+
+            <div class="hero">
+              <h2>У каждой клавиатуры свой звук 💎</h2>
+              <p>Хрусталь, молнии, глитч, бит и аккорд — выбирай стиль, проверяй ввод и включай клавиатуру в системе.</p>
+              <button class="hero-btn" onclick="focusTest()">Протестировать активную →</button>
+            </div>
+
+            <div class="cats" id="cats"></div>
+
+            <div class="section-head">
+              <h3 id="sectionTitle">🔥 Все клавиатуры</h3>
+              <span class="active-chip" id="activeChip">Активна: Void Neon</span>
+            </div>
+
+            <div class="grid" id="grid"></div>
+
+            <div class="test-box" id="testBox">
+              <h3 style="margin:0 0 8px;font-size:15px;">Проверка ввода и настроек</h3>
+              <input id="testInput" type="text" placeholder="Нажми сюда, чтобы протестировать ввод..." />
+              <div class="action-row">
+                <button class="sec-btn" onclick="openImeSettings()">⚙️ Включить клавиатуру</button>
+                <button class="sec-btn" onclick="askMic()">🎤 Доступ к микрофону</button>
+                <button class="sec-btn" onclick="playPreview()">🔊 Тест звука</button>
+              </div>
+            </div>
+
+            <div class="bottom-nav">
+              <button class="nav-item active" id="navHome" onclick="setTab('home')">🏠<span>Главная</span></button>
+              <button class="nav-item" id="navFav" onclick="setTab('fav')">★<span>Избранное</span></button>
+              <button class="nav-item" id="navIme" onclick="setTab('ime')">⌨️<span>Клавиатура</span></button>
+            </div>
+
+            <script>
+              const themes = [
+                { id: "void", name: "Void Neon", sub: "Космос + Синт", cat: "Неоновые", tag: "Неон", bg: "linear-gradient(135deg, #3b0764, #1d4ed8)" },
+                { id: "cyber", name: "Cyber Neon", sub: "Молнии + Синт", cat: "Неоновые", tag: "Неон", bg: "linear-gradient(135deg, #0e7490, #312e81)" },
+                { id: "horror", name: "Horror Glitch", sub: "Черепа + Глитч", cat: "Хоррор", tag: "Хоррор", bg: "linear-gradient(135deg, #7f1d1d, #1f090d)" },
+                { id: "gaming", name: "Gaming Pro", sub: "Звёзды + Бит", cat: "Игровые", tag: "Игровые", bg: "linear-gradient(135deg, #065f46, #111827)" },
+                { id: "gold", name: "Gold Luxury", sub: "Корона + Аккорд", cat: "Милые", tag: "Люкс", bg: "linear-gradient(135deg, #92400e, #451a03)" },
+                { id: "crystal", name: "Crystal Magic", sub: "Алмазы + Хрусталь", cat: "Милые", tag: "Милые", bg: "linear-gradient(135deg, #6d28d9, #a21caf)" }
+              ];
+              const categories = ["Все", "Милые", "Неоновые", "Игровые", "Хоррор"];
+              let selectedCat = "Все";
+              let currentTab = "home";
+              let activeId = localStorage.getItem("vk_theme") || "void";
+              let favs = JSON.parse(localStorage.getItem("vk_favs") || "[]");
+
+              function saveState() {
+                localStorage.setItem("vk_theme", activeId);
+                localStorage.setItem("vk_favs", JSON.stringify(favs));
+                if (window.AndroidBridge && window.AndroidBridge.setTheme) {
+                  window.AndroidBridge.setTheme(activeId);
+                }
+              }
+
+              function playPreview() {
+                if (window.AndroidBridge && window.AndroidBridge.playClick) {
+                  window.AndroidBridge.playClick();
+                }
+              }
+
+              function openImeSettings() {
+                if (window.AndroidBridge && window.AndroidBridge.openInputSettings) {
+                  window.AndroidBridge.openInputSettings();
+                }
+              }
+
+              function askMic() {
+                if (window.AndroidBridge && window.AndroidBridge.requestMic) {
+                  window.AndroidBridge.requestMic();
+                }
+              }
+
+              function focusTest() {
+                const el = document.getElementById("testInput");
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.focus();
+                playPreview();
+              }
+
+              function toggleFav(id, ev) {
+                ev.stopPropagation();
+                if (favs.includes(id)) favs = favs.filter(x => x !== id);
+                else favs.push(id);
+                saveState();
+                render();
+              }
+
+              function selectTheme(id) {
+                activeId = id;
+                saveState();
+                playPreview();
+                render();
+              }
+
+              function setTab(tab) {
+                currentTab = tab;
+                document.getElementById("navHome").classList.toggle("active", tab === "home");
+                document.getElementById("navFav").classList.toggle("active", tab === "fav");
+                document.getElementById("navIme").classList.toggle("active", tab === "ime");
+                if (tab === "ime") {
+                  focusTest();
+                }
+                render();
+              }
+
+              function renderCats() {
+                const catsEl = document.getElementById("cats");
+                catsEl.innerHTML = "";
+                categories.forEach(c => {
+                  const btn = document.createElement("button");
+                  btn.className = "cat-pill" + (selectedCat === c ? " active" : "");
+                  btn.textContent = c === "Все" ? "★ Все" : c;
+                  btn.onclick = () => { selectedCat = c; render(); };
+                  catsEl.appendChild(btn);
+                });
+              }
+
+              function render() {
+                renderCats();
+                const activeObj = themes.find(t => t.id === activeId) || themes[0];
+                document.getElementById("activeChip").textContent = "Активна: " + activeObj.name;
+
+                let list = themes.filter(t => selectedCat === "Все" || t.cat === selectedCat);
+                if (currentTab === "fav") {
+                  list = list.filter(t => favs.includes(t.id));
+                  document.getElementById("sectionTitle").textContent = "★ Избранное";
+                } else {
+                  document.getElementById("sectionTitle").textContent = "🔥 Все клавиатуры (" + list.length + ")";
+                }
+
+                const grid = document.getElementById("grid");
+                grid.innerHTML = "";
+                list.forEach(t => {
+                  const isApplied = t.id === activeId;
+                  const isFav = favs.includes(t.id);
+                  const card = document.createElement("div");
+                  card.className = "card";
+                  card.innerHTML = `
+                    <div class="preview" style="background:${t.bg}">
+                      <button class="fav-btn" onclick="toggleFav('${t.id}', event)">${isFav ? "♥" : "♡"}</button>
+                      <div class="mini-row">
+                        <div class="mini-key">Q</div><div class="mini-key">W</div><div class="mini-key">E</div><div class="mini-key">R</div>
+                      </div>
+                      <div class="mini-row">
+                        <div class="mini-key">A</div><div class="mini-key">S</div><div class="mini-key">D</div><div class="mini-key">F</div>
+                      </div>
+                    </div>
+                    <div class="card-title">${t.name}</div>
+                    <div class="card-sub">${t.sub}</div>
+                    <div class="card-footer">
+                      <span class="card-tag">${t.tag}</span>
+                      <button class="install-btn ${isApplied ? "applied" : ""}" onclick="selectTheme('${t.id}')">
+                        ${isApplied ? "Активна" : "Установить"}
+                      </button>
+                    </div>
+                  `;
+                  grid.appendChild(card);
+                });
+              }
+
+              render();
+            </script>
+          </body>
+          </html>
+          """, overwrite=True)
+
           write_file("app/src/main/kotlin/com/example/voidkeys/MainActivity.kt", """
           package com.example.voidkeys
 
           import android.Manifest
+          import android.annotation.SuppressLint
           import android.content.Context
           import android.content.Intent
-          import android.content.pm.PackageManager
           import android.graphics.Color
-          import android.graphics.drawable.GradientDrawable
+          import android.media.AudioAttributes
+          import android.media.SoundPool
+          import android.os.Build
           import android.os.Bundle
+          import android.os.VibrationEffect
+          import android.os.Vibrator
+          import android.os.VibratorManager
           import android.provider.Settings
-          import android.widget.Button
-          import android.widget.LinearLayout
-          import android.widget.ScrollView
-          import android.widget.TextView
+          import android.webkit.JavascriptInterface
+          import android.webkit.WebSettings
+          import android.webkit.WebView
+          import android.webkit.WebViewClient
           import androidx.appcompat.app.AppCompatActivity
           import androidx.core.app.ActivityCompat
-          import androidx.core.content.ContextCompat
 
           class MainActivity : AppCompatActivity() {
-              private val themes = listOf(
-                  Triple("void", "Void Neon", "#1E1B4B"),
-                  Triple("cyber", "Cyber Neon", "#0E7490"),
-                  Triple("horror", "Horror Glitch", "#7F1D1D"),
-                  Triple("gaming", "Gaming Pro", "#065F46"),
-                  Triple("gold", "Gold Luxury", "#92400E")
-              )
-
+              private lateinit var webView: WebView
+              private lateinit var soundPool: SoundPool
+              private var clickSoundId: Int = 0
+              private var soundLoaded = false
               private val micRequestCode = 101
-              private lateinit var statusText: TextView
-              private lateinit var micStatusText: TextView
 
-              private fun refreshStatus() {
-                  val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
-                  val active = prefs.getString("active_theme", "void") ?: "void"
-                  val title = themes.firstOrNull { it.first == active }?.second ?: active
-                  statusText.text = "Активная тема: $title"
-              }
-
-              private fun refreshMicStatus() {
-                  val granted = ContextCompat.checkSelfPermission(
-                      this,
-                      Manifest.permission.RECORD_AUDIO
-                  ) == PackageManager.PERMISSION_GRANTED
-                  micStatusText.text = if (granted) {
-                      "Микрофон: разрешён"
-                  } else {
-                      "Микрофон: не выдан"
-                  }
-              }
-
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
-
-                  statusText = TextView(this).apply {
-                      textSize = 16f
-                      setTextColor(Color.WHITE)
-                      setPadding(0, 0, 0, 12)
+              inner class Bridge {
+                  @JavascriptInterface
+                  fun setTheme(themeId: String) {
+                      getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
+                          .edit()
+                          .putString("active_theme", themeId)
+                          .apply()
                   }
 
-                  micStatusText = TextView(this).apply {
-                      textSize = 15f
-                      setTextColor(Color.LTGRAY)
-                      setPadding(0, 0, 0, 24)
-                  }
-
-                  val root = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      setBackgroundColor(Color.parseColor("#0B0917"))
-                      setPadding(36, 48, 36, 48)
-                  }
-
-                  root.addView(TextView(this).apply {
-                      text = "VoidKeys"
-                      textSize = 26f
-                      setTextColor(Color.WHITE)
-                      setPadding(0, 0, 0, 8)
-                  })
-
-                  refreshStatus()
-                  refreshMicStatus()
-                  root.addView(statusText)
-                  root.addView(micStatusText)
-
-                  for ((id, label, hex) in themes) {
-                      root.addView(Button(this).apply {
-                          text = "Выбрать: $label"
-                          isAllCaps = false
-                          setTextColor(Color.WHITE)
-                          background = GradientDrawable().apply {
-                              setColor(Color.parseColor(hex))
-                              cornerRadius = 24f
-                          }
-                          layoutParams = LinearLayout.LayoutParams(
-                              LinearLayout.LayoutParams.MATCH_PARENT,
-                              128
-                          ).apply {
-                              bottomMargin = 20
-                          }
-                          setOnClickListener {
-                              prefs.edit().putString("active_theme", id).apply()
-                              refreshStatus()
-                          }
-                      })
-                  }
-
-                  root.addView(Button(this).apply {
-                      text = "Запросить доступ к микрофону"
-                      isAllCaps = false
-                      setTextColor(Color.WHITE)
-                      setBackgroundColor(Color.parseColor("#312E81"))
-                      layoutParams = LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.MATCH_PARENT,
-                          128
-                      ).apply {
-                          topMargin = 8
-                          bottomMargin = 12
+                  @JavascriptInterface
+                  fun openInputSettings() {
+                      runOnUiThread {
+                          startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                       }
-                      setOnClickListener {
+                  }
+
+                  @JavascriptInterface
+                  fun requestMic() {
+                      runOnUiThread {
                           ActivityCompat.requestPermissions(
                               this@MainActivity,
                               arrayOf(Manifest.permission.RECORD_AUDIO),
                               micRequestCode
                           )
                       }
-                  })
+                  }
 
-                  root.addView(Button(this).apply {
-                      text = "Открыть настройки клавиатур"
-                      isAllCaps = false
-                      setTextColor(Color.WHITE)
-                      setBackgroundColor(Color.parseColor("#4F46E5"))
-                      layoutParams = LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.MATCH_PARENT,
-                          128
-                      ).apply {
-                          topMargin = 8
+                  @JavascriptInterface
+                  fun playClick() {
+                      runOnUiThread {
+                          if (soundLoaded) {
+                              soundPool.play(clickSoundId, 0.7f, 0.7f, 1, 0, 1.0f)
+                          }
+                          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                              val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                              vm.defaultVibrator.vibrate(
+                                  VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                              )
+                          } else {
+                              @Suppress("DEPRECATION")
+                              val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                  vib.vibrate(
+                                      VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)
+                                  )
+                              } else {
+                                  @Suppress("DEPRECATION")
+                                  vib.vibrate(15)
+                              }
+                          }
                       }
-                      setOnClickListener {
-                          startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-                      }
-                  })
-
-                  setContentView(ScrollView(this).apply {
-                      addView(root)
-                  })
-              }
-
-              override fun onRequestPermissionsResult(
-                  requestCode: Int,
-                  permissions: Array<out String>,
-                  grantResults: IntArray
-              ) {
-                  super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-                  if (requestCode == micRequestCode) {
-                      refreshMicStatus()
                   }
               }
 
-              override fun onResume() {
-                  super.onResume()
-                  refreshStatus()
-                  refreshMicStatus()
+              @SuppressLint("SetJavaScriptEnabled")
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+
+                  val attrs = AudioAttributes.Builder()
+                      .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                      .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                      .build()
+                  soundPool = SoundPool.Builder()
+                      .setMaxStreams(4)
+                      .setAudioAttributes(attrs)
+                      .build()
+                  clickSoundId = soundPool.load(this, R.raw.click, 1)
+                  soundPool.setOnLoadCompleteListener { _, _, status ->
+                      soundLoaded = (status == 0)
+                  }
+
+                  webView = WebView(this).apply {
+                      setBackgroundColor(Color.parseColor("#0B0718"))
+                      webViewClient = WebViewClient()
+                      settings.javaScriptEnabled = true
+                      settings.domStorageEnabled = true
+                      settings.cacheMode = WebSettings.LOAD_DEFAULT
+                      addJavascriptInterface(Bridge(), "AndroidBridge")
+                      loadUrl("file:///android_asset/index.html")
+                  }
+
+                  setContentView(webView)
+              }
+
+              override fun onDestroy() {
+                  soundPool.release()
+                  super.onDestroy()
               }
           }
           """, overwrite=True)
@@ -521,7 +852,7 @@ jobs:
           }
           """, overwrite=True)
 
-          write_png_icon("app/src/main/res/drawable/ic_launcher.png")
+          write_rich_icon("app/src/main/res/drawable/ic_launcher.png")
 
           wav_path = "app/src/main/res/raw/click.wav"
           if not os.path.exists(wav_path):
