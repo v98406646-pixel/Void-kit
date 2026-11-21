@@ -19,16 +19,16 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Create project files if missing
+      - name: Prepare VoidKeys project files
         run: |
           python3 - << 'PY'
           import os, math, struct, wave
 
-          def write_file(path, content):
+          def write_file(path, content, overwrite=False):
               parent = os.path.dirname(path)
               if parent:
                   os.makedirs(parent, exist_ok=True)
-              if not os.path.exists(path):
+              if overwrite or not os.path.exists(path):
                   with open(path, "w", encoding="utf-8") as f:
                       f.write(content.lstrip("\n"))
 
@@ -100,7 +100,6 @@ jobs:
           dependencies {
               implementation("androidx.core:core-ktx:1.13.1")
               implementation("androidx.appcompat:appcompat:1.7.0")
-              implementation("androidx.activity:activity-ktx:1.9.3")
           }
           """)
 
@@ -166,8 +165,8 @@ jobs:
           import android.widget.LinearLayout
           import android.widget.ScrollView
           import android.widget.TextView
-          import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
+          import androidx.core.app.ActivityCompat
           import androidx.core.content.ContextCompat
 
           class MainActivity : AppCompatActivity() {
@@ -179,13 +178,9 @@ jobs:
                   Triple("gold", "Gold Luxury", "#92400E")
               )
 
+              private val micRequestCode = 101
               private lateinit var statusText: TextView
               private lateinit var micStatusText: TextView
-
-              private val requestMicPermission =
-                  registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-                      refreshMicStatus()
-                  }
 
               private fun refreshStatus() {
                   val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
@@ -275,7 +270,11 @@ jobs:
                           bottomMargin = 12
                       }
                       setOnClickListener {
-                          requestMicPermission.launch(Manifest.permission.RECORD_AUDIO)
+                          ActivityCompat.requestPermissions(
+                              this@MainActivity,
+                              arrayOf(Manifest.permission.RECORD_AUDIO),
+                              micRequestCode
+                          )
                       }
                   })
 
@@ -300,13 +299,24 @@ jobs:
                   })
               }
 
+              override fun onRequestPermissionsResult(
+                  requestCode: Int,
+                  permissions: Array<out String>,
+                  grantResults: IntArray
+              ) {
+                  super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+                  if (requestCode == micRequestCode) {
+                      refreshMicStatus()
+                  }
+              }
+
               override fun onResume() {
                   super.onResume()
                   refreshStatus()
                   refreshMicStatus()
               }
           }
-          """)
+          """, overwrite=True)
 
           write_file("app/src/main/kotlin/com/example/voidkeys/VoidKeysImeService.kt", """
           package com.example.voidkeys
@@ -483,7 +493,7 @@ jobs:
                   super.onDestroy()
               }
           }
-          """)
+          """, overwrite=True)
 
           wav_path = "app/src/main/res/raw/click.wav"
           if not os.path.exists(wav_path):
