@@ -5,9 +5,6 @@ on:
   push:
     branches: [ main ]
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -529,9 +526,8 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/VoidKeys.apk
 
-      - name: Publish APK to Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: VoidKeys v0.1.${{ github.run_number }}
-          files: dist/VoidKeys.apk
+          name: VoidKeys-APK
+          path: dist/VoidKeys.apk
