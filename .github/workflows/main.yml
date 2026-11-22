@@ -451,7 +451,7 @@ jobs:
 
             <div class="hero">
               <h2>У каждой клавиатуры свой звук 💎</h2>
-              <p>Включи VoidKeys, выбери её в системе, используй смайлики ☺ и зажимай пробел для голоса.</p>
+              <p>Включи VoidKeys, выбери её в системе, переключай RU/EN кнопкой 🌐 и зажимай пробел для голоса.</p>
               <button class="hero-btn" onclick="focusGuide()">Как включить клавиатуру →</button>
             </div>
 
@@ -467,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>На клавиатуре <b>VoidKeys</b> работают верхние кнопки (<b>👑</b> app, <b>✨</b> тема, <b>📋</b> буфер, <b>Aあ</b> язык, <b>⚙️</b> настройки, <b>☺</b> смайлики), цифры <b>1–0</b> и <b>долгое нажатие пробела</b> для голоса.</div>
+                <div>На клавиатуре <b>VoidKeys</b> есть кнопка <b>🌐 RU/EN</b> рядом с пробелом для смены языка, <b>⇧</b> для заглавных, <b>☺</b> для смайликов и <b>долгое нажатие пробела</b> для голоса.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -883,6 +883,7 @@ jobs:
               private var emojiVisible = false
               private var clipboardVisible = false
               private var isEnglish = false
+              private var isShifted = false
 
               private val themeOrder = listOf("void", "cyber", "horror", "gaming", "gold", "crystal")
               private var speechRecognizer: SpeechRecognizer? = null
@@ -894,15 +895,15 @@ jobs:
               private val ruRows = listOf(
                   listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
                   listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"),
-                  listOf("я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"),
-                  listOf("☺", "пробел", "↵")
+                  listOf("⇧", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"),
+                  listOf("☺", "🌐 RU", "пробел", "↵")
               )
 
               private val enRows = listOf(
                   listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
                   listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
-                  listOf("z", "x", "c", "v", "b", "n", "m", "⌫"),
-                  listOf("☺", "space", "↵")
+                  listOf("⇧", "z", "x", "c", "v", "b", "n", "m", "⌫"),
+                  listOf("☺", "🌐 EN", "space", "↵")
               )
 
               override fun onCreate() {
@@ -1007,7 +1008,13 @@ jobs:
               private fun toggleLanguage() {
                   isEnglish = !isEnglish
                   rebuildKeys()
-                  showBadgeMessage(if (isEnglish) "Aあ English" else "Aあ Русский")
+                  showBadgeMessage(if (isEnglish) "🌐 English (EN)" else "🌐 Русский (RU)")
+              }
+
+              private fun toggleShift() {
+                  isShifted = !isShifted
+                  rebuildKeys()
+                  showBadgeMessage(if (isShifted) "⇧ ЗАГЛАВНЫЕ" else "⇩ строчные")
               }
 
               private fun toggleClipboardBar() {
@@ -1071,7 +1078,7 @@ jobs:
                   }
               }
 
-              private fun showKeyAnimation(btn: Button, label: String) {
+              private fun showKeyAnimation(btn: Button, label: String, defaultColor: Int = Color.parseColor("#28254A")) {
                   btn.animate().cancel()
                   btn.scaleX = 1.16f
                   btn.scaleY = 1.16f
@@ -1083,7 +1090,7 @@ jobs:
                       .translationY(0f)
                       .setDuration(130L)
                       .withEndAction {
-                          btn.setBackgroundColor(Color.parseColor("#28254A"))
+                          btn.setBackgroundColor(defaultColor)
                       }
                       .start()
 
@@ -1236,7 +1243,7 @@ jobs:
                   rootLayout.addView(topBar)
 
                   keyPreviewBadge = TextView(this).apply {
-                      text = "зажми пробел для голоса"
+                      text = if (isEnglish) "EN • hold space for voice" else "RU • зажми пробел для голоса"
                       textSize = 12f
                       setTextColor(Color.WHITE)
                       gravity = Gravity.CENTER
@@ -1295,7 +1302,7 @@ jobs:
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, em)
+                              showKeyAnimation(this, em, Color.parseColor("#352F63"))
                               playTapEffects()
                               currentInputConnection?.commitText(em, 1)
                           }
@@ -1328,7 +1335,7 @@ jobs:
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, num)
+                              showKeyAnimation(this, num, Color.parseColor("#231F42"))
                               handleKey(num)
                           }
                       })
@@ -1347,25 +1354,54 @@ jobs:
                               topMargin = 7
                           }
                       }
-                      for (label in rowKeys) {
-                          val isSpace = label == "пробел" || label == "space"
+                      for (rawLabel in rowKeys) {
+                          val isSpace = rawLabel == "пробел" || rawLabel == "space"
+                          val isLangBtn = rawLabel.startsWith("🌐")
+                          val isShiftBtn = rawLabel == "⇧"
+                          val isLetter = rawLabel.length == 1 && rawLabel[0].isLetter()
+                          val displayLabel = when {
+                              isSpace -> "$rawLabel (🎤)"
+                              isLetter && isShifted -> rawLabel.uppercase()
+                              else -> rawLabel
+                          }
+                          val baseColor = when {
+                              isLangBtn -> Color.parseColor("#3B3370")
+                              isShiftBtn && isShifted -> Color.parseColor("#6D28D9")
+                              else -> Color.parseColor("#28254A")
+                          }
+
                           rowView.addView(Button(this).apply {
-                              text = if (isSpace) "$label (🎤)" else label
+                              text = displayLabel
                               isAllCaps = false
                               setTextColor(Color.WHITE)
-                              setBackgroundColor(Color.parseColor("#28254A"))
-                              val weight = if (isSpace) 3.5f else 1f
+                              setBackgroundColor(baseColor)
+                              val weight = when {
+                                  isSpace -> 3.0f
+                                  isLangBtn -> 1.4f
+                                  isShiftBtn -> 1.25f
+                                  else -> 1f
+                              }
                               layoutParams = LinearLayout.LayoutParams(
                                   0,
                                   114,
                                   weight
                               ).apply {
-                                  marginStart = 4
-                                  marginEnd = 4
+                                  marginStart = 3
+                                  marginEnd = 3
                               }
                               setOnClickListener {
-                                  showKeyAnimation(this, if (isSpace) "␣" else label)
-                                  handleKey(label)
+                                  if (isLangBtn) {
+                                      playTapEffects()
+                                      toggleLanguage()
+                                      return@setOnClickListener
+                                  }
+                                  if (isShiftBtn) {
+                                      playTapEffects()
+                                      toggleShift()
+                                      return@setOnClickListener
+                                  }
+                                  showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseColor)
+                                  handleKey(displayLabel)
                               }
                               if (isSpace) {
                                   setOnLongClickListener {
@@ -1386,11 +1422,17 @@ jobs:
                       return
                   }
                   val ic = currentInputConnection ?: return
-                  when (label) {
-                      "⌫" -> ic.deleteSurroundingText(1, 0)
-                      "пробел", "space" -> ic.commitText(" ", 1)
-                      "↵" -> sendDefaultEditorAction(true)
-                      else -> ic.commitText(label, 1)
+                  when {
+                      label == "⌫" -> ic.deleteSurroundingText(1, 0)
+                      label.startsWith("пробел") || label.startsWith("space") -> ic.commitText(" ", 1)
+                      label == "↵" -> sendDefaultEditorAction(true)
+                      else -> {
+                          ic.commitText(label, 1)
+                          if (isShifted && label.length == 1 && label[0].isLetter()) {
+                              isShifted = false
+                              rebuildKeys()
+                          }
+                      }
                   }
               }
 
