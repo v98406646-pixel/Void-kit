@@ -413,8 +413,9 @@ jobs:
               .live-key {
                 flex: 1; height: 38px; border-radius: 9px; border: none;
                 background: rgba(255,255,255,0.16); color: #fff; font-weight: 700; font-size: 13px;
+                transition: transform 0.08s ease, background 0.08s ease;
               }
-              .live-key:active { transform: scale(0.95); background: rgba(255,255,255,0.32); }
+              .live-key.pop { transform: scale(1.14) translateY(-3px); background: #8b5cf6; }
               .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
               .sec-btn {
                 border: 1px solid rgba(255,255,255,0.16); background: #22183d;
@@ -457,7 +458,7 @@ jobs:
               <div class="guide-title">Инструкция: куда нажать, чтобы заработала</div>
               <div class="step-line">
                 <div class="step-num">1</div>
-                <div>Нажми <b>«1. Включить VoidKeys»</b> — откроется экран «Экранная клавиатура». Включи ползунок рядом с <b>VoidKeys</b>.</div>
+                <div>Нажми <b>«1. Включить VoidKeys»</b> — откроется экран «Экранная клавиатура». Включи ползунок рядом с <b>VoidKeys</b> (и при необходимости <b>Google Голосовой ввод</b> для кнопки 🎤).</div>
               </div>
               <div class="step-line">
                 <div class="step-num">2</div>
@@ -465,7 +466,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>Нажми в любое поле ввода текста (или проверь звук ниже). Если внизу появится значок клавиатуры — нажми его и выбери <b>VoidKeys</b>.</div>
+                <div>На клавиатуре <b>VoidKeys</b> появится подсказка нажатой буквы и кнопка <b>🎤</b> для переключения на голосовой ввод.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -487,17 +488,17 @@ jobs:
               <div class="typed-screen" id="typedScreen">Нажми кнопки ниже, чтобы проверить звук и текст...</div>
               <div class="live-pad" id="livePad">
                 <div class="live-row">
-                  <button class="live-key" onclick="typeDemo('п')">п</button>
-                  <button class="live-key" onclick="typeDemo('р')">р</button>
-                  <button class="live-key" onclick="typeDemo('и')">и</button>
-                  <button class="live-key" onclick="typeDemo('в')">в</button>
-                  <button class="live-key" onclick="typeDemo('е')">е</button>
-                  <button class="live-key" onclick="typeDemo('т')">т</button>
+                  <button class="live-key" onclick="typeDemo('п', this)">п</button>
+                  <button class="live-key" onclick="typeDemo('р', this)">р</button>
+                  <button class="live-key" onclick="typeDemo('и', this)">и</button>
+                  <button class="live-key" onclick="typeDemo('в', this)">в</button>
+                  <button class="live-key" onclick="typeDemo('е', this)">е</button>
+                  <button class="live-key" onclick="typeDemo('т', this)">т</button>
                 </div>
                 <div class="live-row">
-                  <button class="live-key" style="flex:3" onclick="typeDemo(' ')">пробел</button>
-                  <button class="live-key" onclick="typeDemo('⌫')">⌫</button>
-                  <button class="live-key" onclick="typeDemo('CLR')">очистить</button>
+                  <button class="live-key" style="flex:3" onclick="typeDemo(' ', this)">пробел</button>
+                  <button class="live-key" onclick="typeDemo('⌫', this)">⌫</button>
+                  <button class="live-key" onclick="typeDemo('CLR', this)">очистить</button>
                 </div>
               </div>
               <div class="action-row">
@@ -601,8 +602,12 @@ jobs:
                 playThemeSound(activeId);
               }
 
-              function typeDemo(ch) {
+              function typeDemo(ch, btn) {
                 playThemeSound(activeId);
+                if (btn) {
+                  btn.classList.add("pop");
+                  setTimeout(() => btn.classList.remove("pop"), 130);
+                }
                 if (ch === "CLR") typedBuffer = "";
                 else if (ch === "⌫") typedBuffer = typedBuffer.slice(0, -1);
                 else typedBuffer += ch;
@@ -840,20 +845,26 @@ jobs:
           import android.media.AudioAttributes
           import android.media.SoundPool
           import android.os.Build
+          import android.os.Handler
+          import android.os.Looper
           import android.os.VibrationEffect
           import android.os.Vibrator
           import android.os.VibratorManager
           import android.view.Gravity
           import android.view.View
           import android.view.inputmethod.EditorInfo
+          import android.view.inputmethod.InputMethodManager
           import android.widget.Button
           import android.widget.LinearLayout
+          import android.widget.TextView
 
           class VoidKeysImeService : InputMethodService() {
               private lateinit var soundPool: SoundPool
               private var clickSoundId: Int = 0
               private var soundLoaded = false
               private lateinit var rootLayout: LinearLayout
+              private lateinit var keyPreviewBadge: TextView
+              private val handler = Handler(Looper.getMainLooper())
               private var currentPitch: Float = 1.15f
               private var currentVibMs: Long = 16L
 
@@ -861,7 +872,7 @@ jobs:
                   listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
                   listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"),
                   listOf("я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"),
-                  listOf("пробел", "↵")
+                  listOf("🎤", "пробел", "↵")
               )
 
               override fun onCreate() {
@@ -883,7 +894,7 @@ jobs:
               override fun onCreateInputView(): View {
                   rootLayout = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
-                      setPadding(12, 16, 12, 20)
+                      setPadding(12, 12, 12, 20)
                   }
                   applyTheme()
                   rebuildKeys()
@@ -940,8 +951,65 @@ jobs:
                   }
               }
 
+              private fun showKeyAnimation(btn: Button, label: String) {
+                  btn.animate().cancel()
+                  btn.scaleX = 1.16f
+                  btn.scaleY = 1.16f
+                  btn.translationY = -8f
+                  btn.setBackgroundColor(Color.parseColor("#8B5CF6"))
+                  btn.animate()
+                      .scaleX(1.0f)
+                      .scaleY(1.0f)
+                      .translationY(0f)
+                      .setDuration(130L)
+                      .withEndAction {
+                          btn.setBackgroundColor(Color.parseColor("#28254A"))
+                      }
+                      .start()
+
+                  if (::keyPreviewBadge.isInitialized) {
+                      keyPreviewBadge.text = label
+                      keyPreviewBadge.alpha = 1f
+                      keyPreviewBadge.scaleX = 1.15f
+                      keyPreviewBadge.scaleY = 1.15f
+                      keyPreviewBadge.animate()
+                          .scaleX(1.0f)
+                          .scaleY(1.0f)
+                          .setDuration(110L)
+                          .start()
+                      handler.removeCallbacksAndMessages(null)
+                      handler.postDelayed({
+                          if (::keyPreviewBadge.isInitialized) {
+                              keyPreviewBadge.animate().alpha(0.35f).setDuration(200L).start()
+                          }
+                      }, 450L)
+                  }
+              }
+
               private fun rebuildKeys() {
                   rootLayout.removeAllViews()
+
+                  keyPreviewBadge = TextView(this).apply {
+                      text = "VoidKeys"
+                      textSize = 15f
+                      setTextColor(Color.WHITE)
+                      gravity = Gravity.CENTER
+                      alpha = 0.45f
+                      background = GradientDrawable().apply {
+                          setColor(Color.parseColor("#4C1D95"))
+                          cornerRadius = 20f
+                      }
+                      setPadding(24, 6, 24, 6)
+                      layoutParams = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply {
+                          gravity = Gravity.CENTER_HORIZONTAL
+                          bottomMargin = 6
+                      }
+                  }
+                  rootLayout.addView(keyPreviewBadge)
+
                   for (rowKeys in rows) {
                       val rowView = LinearLayout(this).apply {
                           orientation = LinearLayout.HORIZONTAL
@@ -969,6 +1037,7 @@ jobs:
                                   marginEnd = 4
                               }
                               setOnClickListener {
+                                  showKeyAnimation(this, label)
                                   handleKey(label)
                               }
                           })
@@ -977,8 +1046,27 @@ jobs:
                   }
               }
 
+              private fun triggerVoiceInput() {
+                  val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                      val token = window.window?.attributes?.token
+                      if (token != null) {
+                          val switched = imm.switchToNextInputMethod(token, false)
+                          if (!switched) {
+                              imm.showInputMethodPicker()
+                          }
+                          return
+                      }
+                  }
+                  imm.showInputMethodPicker()
+              }
+
               private fun handleKey(label: String) {
                   playTapEffects()
+                  if (label == "🎤") {
+                      triggerVoiceInput()
+                      return
+                  }
                   val ic = currentInputConnection ?: return
                   when (label) {
                       "⌫" -> ic.deleteSurroundingText(1, 0)
@@ -1012,6 +1100,7 @@ jobs:
               }
 
               override fun onDestroy() {
+                  handler.removeCallbacksAndMessages(null)
                   soundPool.release()
                   super.onDestroy()
               }
