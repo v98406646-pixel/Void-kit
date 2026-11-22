@@ -467,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>Зажми <b>«е»</b> для выбора <b>ё / ю</b>, зажми <b>⌫</b> для быстрого стирания и зажми пробел для голоса.</div>
+                <div>Печатай слова (например, <b>«при»</b>) — сверху появятся подсказки, зажми <b>«е»</b> для <b>ё / ю</b>, <b>⌫</b> для стирания и пробел для голоса.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -883,6 +883,7 @@ jobs:
               private var clickSoundId: Int = 0
               private var soundLoaded = false
               private lateinit var rootLayout: LinearLayout
+              private lateinit var suggestionBar: LinearLayout
               private lateinit var emojiBar: LinearLayout
               private lateinit var clipboardBar: LinearLayout
               private lateinit var altCharBar: LinearLayout
@@ -909,6 +910,37 @@ jobs:
               private val emojis = listOf("😀", "😂", "😍", "🔥", "👍", "😎", "🎉", "✨", "👑", "💎")
               private val numRow = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
 
+              private val ruDictionary = listOf(
+                  "привет", "прикол", "прийти", "приветствую", "прикольно", "приветы",
+                  "просто", "проблема", "проверка", "пройти", "прости", "против",
+                  "пока", "почему", "помощь", "потом", "понятно", "пожалуйста",
+                  "давай", "да", "доброе", "дома", "делать", "думаю",
+                  "хорошо", "хочу", "ход", "хватит", "хит", "холодно",
+                  "как", "когда", "куда", "кто", "круто", "классно",
+                  "спасибо", "сейчас", "сделаю", "сегодня", "смотри", "снова",
+                  "норм", "нормально", "нужно", "напиши", "надо", "новый",
+                  "очень", "отлично", "ответ", "ок", "один", "оставайся",
+                  "буду", "будет", "быстро", "без", "больше", "брать",
+                  "где", "говори", "главное", "готово", "гулять", "глаз",
+                  "можно", "может", "меня", "мне", "могу", "момент",
+                  "люблю", "лучше", "люди", "легко", "лишнего", "линия",
+                  "точно", "тоже", "только", "тут", "там", "теперь",
+                  "всё", "время", "вопрос", "вот", "вместе", "важно"
+              )
+
+              private val enDictionary = listOf(
+                  "hello", "help", "here", "hey", "hi", "how",
+                  "please", "problem", "play", "phone", "place", "pretty",
+                  "what", "where", "when", "why", "who", "with",
+                  "good", "great", "go", "get", "game", "gold",
+                  "yes", "you", "your", "yeah", "yesterday", "young",
+                  "cool", "come", "call", "can", "come on", "check",
+                  "thanks", "thank you", "this", "that", "there", "time",
+                  "ok", "okay", "open", "one", "out", "over",
+                  "now", "no", "nice", "need", "new", "never",
+                  "love", "like", "look", "let", "little", "later"
+              )
+
               private val ruRows = listOf(
                   listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
                   listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"),
@@ -930,6 +962,7 @@ jobs:
                       val countToDelete = if (deleteRepeatCount > 18) 3 else 1
                       currentInputConnection?.deleteSurroundingText(countToDelete, 0)
                       playTapEffects()
+                      updateSuggestions()
                       val nextDelay = when {
                           deleteRepeatCount > 18 -> 45L
                           deleteRepeatCount > 6 -> 75L
@@ -948,6 +981,7 @@ jobs:
                   btn.background = makeKeyDrawable(currentPopColor, Color.WHITE, 22f, 2)
                   currentInputConnection?.deleteSurroundingText(1, 0)
                   playTapEffects()
+                  updateSuggestions()
                   showBadgeMessage("⌫ стираю...", keepVisible = true)
                   handler.postDelayed(holdDeleteRunnable, 320L)
               }
@@ -965,6 +999,88 @@ jobs:
                   }
                   if (!isListening) {
                       showBadgeMessage("⌫")
+                  }
+              }
+
+              private fun getCurrentWordPrefix(): String {
+                  val before = currentInputConnection?.getTextBeforeCursor(40, 0)?.toString().orEmpty()
+                  if (before.isEmpty() || before.last().isWhitespace()) return ""
+                  val lastToken = before.takeLastWhile { !it.isWhitespace() }
+                  return lastToken.trimStart { !it.isLetter() }
+              }
+
+              private fun findPredictions(prefix: String): List<String> {
+                  val lower = prefix.lowercase()
+                  val dict = if (isEnglish) enDictionary else ruDictionary
+                  if (lower.isEmpty()) {
+                      return if (isEnglish) {
+                          listOf("Hello", "How", "Thanks")
+                      } else {
+                          listOf("Привет", "Как", "Спасибо")
+                      }
+                  }
+                  val matches = dict.filter { word ->
+                      word.startsWith(lower) && word != lower
+                  }.take(3)
+
+                  val formatted = matches.map { word ->
+                      if (prefix.firstOrNull()?.isUpperCase() == true || isShifted) {
+                          word.replaceFirstChar { it.uppercase() }
+                      } else {
+                          word
+                      }
+                  }
+                  return if (formatted.isNotEmpty()) formatted else listOf(prefix)
+              }
+
+              private fun applySuggestion(word: String) {
+                  val ic = currentInputConnection ?: return
+                  val prefix = getCurrentWordPrefix()
+                  playTapEffects()
+                  if (prefix.isNotEmpty()) {
+                      ic.deleteSurroundingText(prefix.length, 0)
+                  }
+                  ic.commitText("$word ", 1)
+                  if (isShifted) {
+                      isShifted = false
+                      rebuildKeys()
+                  } else {
+                      updateSuggestions()
+                  }
+                  showBadgeMessage("✓ $word")
+              }
+
+              private fun updateSuggestions() {
+                  if (!::suggestionBar.isInitialized) return
+                  val prefix = getCurrentWordPrefix()
+                  val words = findPredictions(prefix)
+                  suggestionBar.removeAllViews()
+                  for (word in words) {
+                      val isExactPrefix = word.equals(prefix, ignoreCase = true)
+                      suggestionBar.addView(Button(this).apply {
+                          text = word
+                          isAllCaps = false
+                          typeface = Typeface.DEFAULT_BOLD
+                          textSize = 13f
+                          setTextColor(Color.WHITE)
+                          background = makeKeyDrawable(
+                              if (isExactPrefix) currentKeyFill else currentAccentFill,
+                              currentStrokeColor,
+                              18f,
+                              2
+                          )
+                          layoutParams = LinearLayout.LayoutParams(
+                              0,
+                              78,
+                              1f
+                          ).apply {
+                              marginStart = 3
+                              marginEnd = 3
+                          }
+                          setOnClickListener {
+                              applySuggestion(word)
+                          }
+                      })
                   }
               }
 
@@ -1004,6 +1120,8 @@ jobs:
                               if (isShifted) {
                                   isShifted = false
                                   rebuildKeys()
+                              } else {
+                                  updateSuggestions()
                               }
                               showBadgeMessage("✓ $variant")
                           }
@@ -1182,6 +1300,18 @@ jobs:
                   }
               }
 
+              override fun onUpdateSelection(
+                  oldSelStart: Int,
+                  oldSelEnd: Int,
+                  newSelStart: Int,
+                  newSelEnd: Int,
+                  candidatesStart: Int,
+                  candidatesEnd: Int
+              ) {
+                  super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+                  updateSuggestions()
+              }
+
               override fun onFinishInputView(finishingInput: Boolean) {
                   stopHoldDelete(null)
                   super.onFinishInputView(finishingInput)
@@ -1341,6 +1471,7 @@ jobs:
                           playTapEffects()
                           if (clipText.isNotEmpty()) {
                               currentInputConnection?.commitText(clipText, 1)
+                              updateSuggestions()
                               showBadgeMessage("✓ Вставлено")
                           }
                           clipboardVisible = false
@@ -1454,6 +1585,7 @@ jobs:
                               val spoken = matches?.firstOrNull()?.trim()
                               if (!spoken.isNullOrEmpty()) {
                                   currentInputConnection?.commitText("$spoken ", 1)
+                                  updateSuggestions()
                                   showBadgeMessage("✓ $spoken")
                               } else {
                                   showBadgeMessage("Речь не распознана")
@@ -1547,15 +1679,27 @@ jobs:
                   }
                   rootLayout.addView(topBar)
 
+                  suggestionBar = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER
+                      layoutParams = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply {
+                          bottomMargin = 5
+                      }
+                  }
+                  rootLayout.addView(suggestionBar)
+
                   keyPreviewBadge = TextView(this).apply {
                       text = if (isEnglish) "EN • hold space for voice" else "RU • зажми «е» для ё/ю"
-                      textSize = 12f
+                      textSize = 11f
                       typeface = Typeface.DEFAULT_BOLD
                       setTextColor(Color.WHITE)
                       gravity = Gravity.CENTER
                       alpha = 0.5f
                       background = makeKeyDrawable(currentAccentFill, currentStrokeColor, 20f, 1)
-                      setPadding(24, 5, 24, 5)
+                      setPadding(24, 4, 24, 4)
                       layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1621,6 +1765,7 @@ jobs:
                               showKeyAnimation(this, em, currentKeyFill, currentStrokeColor, 18f)
                               playTapEffects()
                               currentInputConnection?.commitText(em, 1)
+                              updateSuggestions()
                           }
                       })
                   }
@@ -1762,6 +1907,8 @@ jobs:
                       }
                       rootLayout.addView(rowView)
                   }
+
+                  updateSuggestions()
               }
 
               private fun handleKey(label: String) {
@@ -1772,14 +1919,25 @@ jobs:
                   }
                   val ic = currentInputConnection ?: return
                   when {
-                      label == "⌫" -> ic.deleteSurroundingText(1, 0)
-                      label.startsWith("пробел") || label.startsWith("space") -> ic.commitText(" ", 1)
-                      label == "↵" -> sendDefaultEditorAction(true)
+                      label == "⌫" -> {
+                          ic.deleteSurroundingText(1, 0)
+                          updateSuggestions()
+                      }
+                      label.startsWith("пробел") || label.startsWith("space") -> {
+                          ic.commitText(" ", 1)
+                          updateSuggestions()
+                      }
+                      label == "↵" -> {
+                          sendDefaultEditorAction(true)
+                          updateSuggestions()
+                      }
                       else -> {
                           ic.commitText(label, 1)
                           if (isShifted && label.length == 1 && label[0].isLetter()) {
                               isShifted = false
                               rebuildKeys()
+                          } else {
+                              updateSuggestions()
                           }
                       }
                   }
