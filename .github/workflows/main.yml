@@ -888,8 +888,8 @@ jobs:
               private val handler = Handler(Looper.getMainLooper())
               private var currentPitch: Float = 1.15f
               private var currentVibMs: Long = 16L
-              private var currentStrokeColor: Int = Color.parseColor("#80C4B5FD")
-              private var currentKeyFill: Int = Color.parseColor("#B81B1438")
+              private var currentStrokeColor: Int = Color.parseColor("#B8C4B5FD")
+              private var currentKeyFill: Int = Color.parseColor("#7A1B1438")
               private var currentAccentFill: Int = Color.parseColor("#CC6D28D9")
               private var currentPopColor: Int = Color.parseColor("#A855F7")
               private var emojiVisible = false
@@ -923,20 +923,20 @@ jobs:
               ) : Drawable() {
                   private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                       color = tintColor
-                      alpha = 46
+                      alpha = 96
                       style = Paint.Style.FILL
                   }
                   private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                       color = tintColor
-                      alpha = 72
+                      alpha = 155
                       style = Paint.Style.STROKE
-                      strokeWidth = 4.5f
+                      strokeWidth = 6.5f
                       strokeCap = Paint.Cap.ROUND
                       strokeJoin = Paint.Join.ROUND
                   }
                   private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                       color = Color.parseColor("#FF8FAB")
-                      alpha = 52
+                      alpha = 115
                       style = Paint.Style.FILL
                   }
 
@@ -947,7 +947,7 @@ jobs:
 
                       val cx = w * 0.5f
                       val cy = h * 0.56f
-                      val radius = minOf(w, h) * 0.25f
+                      val radius = minOf(w, h) * 0.27f
 
                       // Ушки милого котика
                       val leftEar = Path().apply {
@@ -972,8 +972,8 @@ jobs:
                       canvas.drawCircle(cx, cy, radius, linePaint)
 
                       // Щёчки (румянец)
-                      canvas.drawCircle(cx - radius * 0.56f, cy + radius * 0.14f, radius * 0.16f, blushPaint)
-                      canvas.drawCircle(cx + radius * 0.56f, cy + radius * 0.14f, radius * 0.16f, blushPaint)
+                      canvas.drawCircle(cx - radius * 0.56f, cy + radius * 0.14f, radius * 0.17f, blushPaint)
+                      canvas.drawCircle(cx + radius * 0.56f, cy + radius * 0.14f, radius * 0.17f, blushPaint)
 
                       // Глазки-дужки
                       val eyeY = cy - radius * 0.08f
@@ -1035,10 +1035,10 @@ jobs:
                       // Усики слева и справа
                       val whiskY1 = cy + radius * 0.08f
                       val whiskY2 = cy + radius * 0.24f
-                      canvas.drawLine(cx - radius * 0.72f, whiskY1, cx - radius * 1.38f, whiskY1 - radius * 0.08f, linePaint)
-                      canvas.drawLine(cx - radius * 0.72f, whiskY2, cx - radius * 1.38f, whiskY2 + radius * 0.06f, linePaint)
-                      canvas.drawLine(cx + radius * 0.72f, whiskY1, cx + radius * 1.38f, whiskY1 - radius * 0.08f, linePaint)
-                      canvas.drawLine(cx + radius * 0.72f, whiskY2, cx + radius * 1.38f, whiskY2 + radius * 0.06f, linePaint)
+                      canvas.drawLine(cx - radius * 0.72f, whiskY1, cx - radius * 1.42f, whiskY1 - radius * 0.08f, linePaint)
+                      canvas.drawLine(cx - radius * 0.72f, whiskY2, cx - radius * 1.42f, whiskY2 + radius * 0.06f, linePaint)
+                      canvas.drawLine(cx + radius * 0.72f, whiskY1, cx + radius * 1.42f, whiskY1 - radius * 0.08f, linePaint)
+                      canvas.drawLine(cx + radius * 0.72f, whiskY2, cx + radius * 1.42f, whiskY2 + radius * 0.06f, linePaint)
                   }
 
                   override fun setAlpha(alpha: Int) {
@@ -1111,54 +1111,54 @@ jobs:
                       "cyber" -> {
                           currentPitch = 1.35f
                           currentVibMs = 14L
-                          currentKeyFill = Color.parseColor("#B80A2E42")
+                          currentKeyFill = Color.parseColor("#7A0A2E42")
                           currentAccentFill = Color.parseColor("#CC0891B2")
-                          currentStrokeColor = Color.parseColor("#9922D3EE")
+                          currentStrokeColor = Color.parseColor("#BB22D3EE")
                           currentPopColor = Color.parseColor("#06B6D4")
                           intArrayOf(Color.parseColor("#083344"), Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
                       }
                       "horror" -> {
                           currentPitch = 0.72f
                           currentVibMs = 32L
-                          currentKeyFill = Color.parseColor("#B82B080E")
+                          currentKeyFill = Color.parseColor("#7A2B080E")
                           currentAccentFill = Color.parseColor("#CC991B1B")
-                          currentStrokeColor = Color.parseColor("#99F87171")
+                          currentStrokeColor = Color.parseColor("#BBF87171")
                           currentPopColor = Color.parseColor("#EF4444")
                           intArrayOf(Color.parseColor("#2A060B"), Color.parseColor("#7F1D1D"), Color.parseColor("#140508"))
                       }
                       "gaming" -> {
                           currentPitch = 1.08f
                           currentVibMs = 22L
-                          currentKeyFill = Color.parseColor("#B807291E")
+                          currentKeyFill = Color.parseColor("#7A07291E")
                           currentAccentFill = Color.parseColor("#CC059669")
-                          currentStrokeColor = Color.parseColor("#9934D399")
+                          currentStrokeColor = Color.parseColor("#BB34D399")
                           currentPopColor = Color.parseColor("#10B981")
                           intArrayOf(Color.parseColor("#052E22"), Color.parseColor("#065F46"), Color.parseColor("#0F172A"))
                       }
                       "gold" -> {
                           currentPitch = 0.92f
                           currentVibMs = 18L
-                          currentKeyFill = Color.parseColor("#B82B1604")
+                          currentKeyFill = Color.parseColor("#7A2B1604")
                           currentAccentFill = Color.parseColor("#CCB45309")
-                          currentStrokeColor = Color.parseColor("#99FBBF24")
+                          currentStrokeColor = Color.parseColor("#BBFBBF24")
                           currentPopColor = Color.parseColor("#F59E0B")
                           intArrayOf(Color.parseColor("#291304"), Color.parseColor("#92400E"), Color.parseColor("#1C1006"))
                       }
                       "crystal" -> {
                           currentPitch = 1.45f
                           currentVibMs = 12L
-                          currentKeyFill = Color.parseColor("#B8240A3D")
+                          currentKeyFill = Color.parseColor("#7A240A3D")
                           currentAccentFill = Color.parseColor("#CCB026B9")
-                          currentStrokeColor = Color.parseColor("#99F0ABFC")
+                          currentStrokeColor = Color.parseColor("#BBF0ABFC")
                           currentPopColor = Color.parseColor("#E879F9")
                           intArrayOf(Color.parseColor("#2E074A"), Color.parseColor("#6D28D9"), Color.parseColor("#86198F"))
                       }
                       else -> {
                           currentPitch = 1.15f
                           currentVibMs = 16L
-                          currentKeyFill = Color.parseColor("#B81B1438")
+                          currentKeyFill = Color.parseColor("#7A1B1438")
                           currentAccentFill = Color.parseColor("#CC6D28D9")
-                          currentStrokeColor = Color.parseColor("#99C4B5FD")
+                          currentStrokeColor = Color.parseColor("#BBC4B5FD")
                           currentPopColor = Color.parseColor("#A855F7")
                           intArrayOf(Color.parseColor("#1E083B"), Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                       }
