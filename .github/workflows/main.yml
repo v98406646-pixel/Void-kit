@@ -744,7 +744,7 @@ jobs:
                       getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
                           .edit()
                           .putString("active_theme", themeId)
-                          .apply()
+                          .commit()
                   }
 
                   @JavascriptInterface
@@ -858,6 +858,8 @@ jobs:
           import android.graphics.drawable.LayerDrawable
           import android.inputmethodservice.InputMethodService
           import android.media.AudioAttributes
+          import android.media.AudioFormat
+          import android.media.AudioTrack
           import android.media.SoundPool
           import android.os.Build
           import android.os.Bundle
@@ -878,6 +880,8 @@ jobs:
           import android.widget.LinearLayout
           import android.widget.TextView
           import androidx.core.content.ContextCompat
+          import kotlin.math.PI
+          import kotlin.math.sin
 
           class VoidKeysImeService : InputMethodService() {
               private lateinit var soundPool: SoundPool
@@ -890,7 +894,10 @@ jobs:
               private lateinit var altCharBar: LinearLayout
               private lateinit var keyPreviewBadge: TextView
               private val handler = Handler(Looper.getMainLooper())
+              private var currentThemeId: String = "void"
               private var currentPitch: Float = 1.15f
+              private var currentFreq: Double = 580.0
+              private var currentWave: String = "sine"
               private var currentVibMs: Long = 16L
               private var currentStrokeColor: Int = Color.parseColor("#B8C4B5FD")
               private var currentKeyFill: Int = Color.parseColor("#7A1B1438")
@@ -1330,10 +1337,15 @@ jobs:
               override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
                   super.onStartInputView(info, restarting)
                   if (::rootLayout.isInitialized) {
+                      val prevTheme = currentThemeId
                       val land = isLandscapeMode()
                       rootLayout.setPadding(12, if (land) 3 else 10, 12, if (land) 4 else 22)
                       applyTheme()
-                      rebuildKeys()
+                      if (prevTheme != currentThemeId) {
+                          rebuildKeys()
+                      } else {
+                          updateSuggestions()
+                      }
                   }
               }
 
@@ -1377,64 +1389,88 @@ jobs:
                   }
               }
 
-              private fun applyTheme() {
-                  val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
-                  val themeId = prefs.getString("active_theme", "void") ?: "void"
-                  val colors = when (themeId) {
+              private fun readSavedThemeId(): String {
+                  return getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
+                      .getString("active_theme", "void") ?: "void"
+              }
+
+              private fun syncThemeParams(themeId: String) {
+                  currentThemeId = themeId
+                  when (themeId) {
                       "cyber" -> {
                           currentPitch = 1.35f
+                          currentFreq = 880.0
+                          currentWave = "sawtooth"
                           currentVibMs = 14L
                           currentKeyFill = Color.parseColor("#7A0A2E42")
                           currentAccentFill = Color.parseColor("#CC0891B2")
                           currentStrokeColor = Color.parseColor("#BB22D3EE")
                           currentPopColor = Color.parseColor("#06B6D4")
-                          intArrayOf(Color.parseColor("#083344"), Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
                       }
                       "horror" -> {
                           currentPitch = 0.72f
+                          currentFreq = 210.0
+                          currentWave = "square"
                           currentVibMs = 32L
                           currentKeyFill = Color.parseColor("#7A2B080E")
                           currentAccentFill = Color.parseColor("#CC991B1B")
                           currentStrokeColor = Color.parseColor("#BBF87171")
                           currentPopColor = Color.parseColor("#EF4444")
-                          intArrayOf(Color.parseColor("#2A060B"), Color.parseColor("#7F1D1D"), Color.parseColor("#140508"))
                       }
                       "gaming" -> {
                           currentPitch = 1.08f
+                          currentFreq = 440.0
+                          currentWave = "triangle"
                           currentVibMs = 22L
                           currentKeyFill = Color.parseColor("#7A07291E")
                           currentAccentFill = Color.parseColor("#CC059669")
                           currentStrokeColor = Color.parseColor("#BB34D399")
                           currentPopColor = Color.parseColor("#10B981")
-                          intArrayOf(Color.parseColor("#052E22"), Color.parseColor("#065F46"), Color.parseColor("#0F172A"))
                       }
                       "gold" -> {
                           currentPitch = 0.92f
+                          currentFreq = 660.0
+                          currentWave = "sine"
                           currentVibMs = 18L
                           currentKeyFill = Color.parseColor("#7A2B1604")
                           currentAccentFill = Color.parseColor("#CCB45309")
                           currentStrokeColor = Color.parseColor("#BBFBBF24")
                           currentPopColor = Color.parseColor("#F59E0B")
-                          intArrayOf(Color.parseColor("#291304"), Color.parseColor("#92400E"), Color.parseColor("#1C1006"))
                       }
                       "crystal" -> {
                           currentPitch = 1.45f
+                          currentFreq = 1040.0
+                          currentWave = "sine"
                           currentVibMs = 12L
                           currentKeyFill = Color.parseColor("#7A240A3D")
                           currentAccentFill = Color.parseColor("#CCB026B9")
                           currentStrokeColor = Color.parseColor("#BBF0ABFC")
                           currentPopColor = Color.parseColor("#E879F9")
-                          intArrayOf(Color.parseColor("#2E074A"), Color.parseColor("#6D28D9"), Color.parseColor("#86198F"))
                       }
                       else -> {
+                          currentThemeId = "void"
                           currentPitch = 1.15f
+                          currentFreq = 580.0
+                          currentWave = "sine"
                           currentVibMs = 16L
                           currentKeyFill = Color.parseColor("#7A1B1438")
                           currentAccentFill = Color.parseColor("#CC6D28D9")
                           currentStrokeColor = Color.parseColor("#BBC4B5FD")
                           currentPopColor = Color.parseColor("#A855F7")
-                          intArrayOf(Color.parseColor("#1E083B"), Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                       }
+                  }
+              }
+
+              private fun applyTheme() {
+                  val themeId = readSavedThemeId()
+                  syncThemeParams(themeId)
+                  val colors = when (currentThemeId) {
+                      "cyber" -> intArrayOf(Color.parseColor("#083344"), Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
+                      "horror" -> intArrayOf(Color.parseColor("#2A060B"), Color.parseColor("#7F1D1D"), Color.parseColor("#140508"))
+                      "gaming" -> intArrayOf(Color.parseColor("#052E22"), Color.parseColor("#065F46"), Color.parseColor("#0F172A"))
+                      "gold" -> intArrayOf(Color.parseColor("#291304"), Color.parseColor("#92400E"), Color.parseColor("#1C1006"))
+                      "crystal" -> intArrayOf(Color.parseColor("#2E074A"), Color.parseColor("#6D28D9"), Color.parseColor("#86198F"))
+                      else -> intArrayOf(Color.parseColor("#1E083B"), Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                   }
                   val bgDrawable = GradientDrawable(
                       GradientDrawable.Orientation.TL_BR,
@@ -1447,11 +1483,64 @@ jobs:
                   rootLayout.background = LayerDrawable(arrayOf(bgDrawable, catDrawable))
               }
 
+              private fun playThemeSynth() {
+                  try {
+                      val sampleRate = 22050
+                      val durationSec = 0.055
+                      val numSamples = (sampleRate * durationSec).toInt()
+                      val pcm = ShortArray(numSamples)
+                      val startFreq = currentFreq
+                      val endFreq = (currentFreq * 0.56).coerceAtLeast(95.0)
+                      for (i in 0 until numSamples) {
+                          val t = i.toDouble() / numSamples
+                          val env = 1.0 - t
+                          val freq = startFreq + (endFreq - startFreq) * t
+                          val phase = 2.0 * PI * freq * (i.toDouble() / sampleRate)
+                          val rawWave = when (currentWave) {
+                              "square" -> if (sin(phase) >= 0.0) 0.75 else -0.75
+                              "sawtooth" -> 2.0 * ((phase / (2.0 * PI)) - kotlin.math.floor(0.5 + (phase / (2.0 * PI))))
+                              "triangle" -> 2.0 * kotlin.math.abs(2.0 * ((phase / (2.0 * PI)) - kotlin.math.floor(0.5 + (phase / (2.0 * PI))))) - 1.0
+                              else -> sin(phase)
+                          }
+                          pcm[i] = (rawWave * env * 13000.0).toInt().coerceIn(-32767, 32767).toShort()
+                      }
+                      val track = AudioTrack.Builder()
+                          .setAudioAttributes(
+                              AudioAttributes.Builder()
+                                  .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                                  .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                  .build()
+                          )
+                          .setAudioFormat(
+                              AudioFormat.Builder()
+                                  .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                  .setSampleRate(sampleRate)
+                                  .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                  .build()
+                          )
+                          .setBufferSizeInBytes(pcm.size * 2)
+                          .setTransferMode(AudioTrack.MODE_STATIC)
+                          .build()
+                      track.write(pcm, 0, pcm.size)
+                      track.play()
+                      handler.postDelayed({
+                          try {
+                              track.stop()
+                              track.release()
+                          } catch (_: Exception) {}
+                      }, 120L)
+                  } catch (_: Exception) {
+                      if (soundLoaded) {
+                          soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
+                      }
+                  }
+              }
+
               private fun cycleTheme() {
                   val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
                   val current = prefs.getString("active_theme", "void") ?: "void"
                   val next = themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.size]
-                  prefs.edit().putString("active_theme", next).apply()
+                  prefs.edit().putString("active_theme", next).commit()
                   applyTheme()
                   rebuildKeys()
                   showBadgeMessage("✨ Тема: $next")
@@ -2048,9 +2137,14 @@ jobs:
               }
 
               private fun playTapEffects() {
-                  if (soundLoaded) {
-                      soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
+                  val savedTheme = readSavedThemeId()
+                  if (savedTheme != currentThemeId) {
+                      syncThemeParams(savedTheme)
+                      if (::rootLayout.isInitialized) {
+                          applyTheme()
+                      }
                   }
+                  playThemeSynth()
                   vibrateMs(currentVibMs)
               }
 
