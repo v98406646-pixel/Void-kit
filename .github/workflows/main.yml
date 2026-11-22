@@ -467,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>На клавиатуре <b>VoidKeys</b> под кнопками просвечивает милый котик 🐱, есть кнопка <b>🌐 RU/EN</b>, <b>⇧</b>, <b>☺</b>, зажатие <b>⌫</b> для быстрого стирания и <b>долгое нажатие пробела</b> для голоса.</div>
+                <div>Зажми <b>«е»</b> для выбора <b>ё / ю</b>, зажми <b>⌫</b> для быстрого стирания и зажми пробел для голоса.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -885,6 +885,7 @@ jobs:
               private lateinit var rootLayout: LinearLayout
               private lateinit var emojiBar: LinearLayout
               private lateinit var clipboardBar: LinearLayout
+              private lateinit var altCharBar: LinearLayout
               private lateinit var keyPreviewBadge: TextView
               private val handler = Handler(Looper.getMainLooper())
               private var currentPitch: Float = 1.15f
@@ -895,6 +896,7 @@ jobs:
               private var currentPopColor: Int = Color.parseColor("#A855F7")
               private var emojiVisible = false
               private var clipboardVisible = false
+              private var altCharVisible = false
               private var isEnglish = false
               private var isShifted = false
               private var isDeletingHeld = false
@@ -964,6 +966,53 @@ jobs:
                   if (!isListening) {
                       showBadgeMessage("⌫")
                   }
+              }
+
+              private fun showAltCharPicker(baseChar: String) {
+                  val variants = when (baseChar.lowercase()) {
+                      "е" -> if (isShifted) listOf("Ё", "Ю") else listOf("ё", "ю")
+                      else -> return
+                  }
+                  if (!::altCharBar.isInitialized) return
+                  emojiVisible = false
+                  clipboardVisible = false
+                  if (::emojiBar.isInitialized) emojiBar.visibility = View.GONE
+                  if (::clipboardBar.isInitialized) clipboardBar.visibility = View.GONE
+
+                  altCharBar.removeAllViews()
+                  for (variant in variants) {
+                      altCharBar.addView(Button(this).apply {
+                          text = variant
+                          isAllCaps = false
+                          typeface = Typeface.DEFAULT_BOLD
+                          textSize = 16f
+                          setTextColor(Color.WHITE)
+                          background = makeKeyDrawable(currentAccentFill, Color.WHITE, 18f, 2)
+                          layoutParams = LinearLayout.LayoutParams(
+                              0,
+                              92,
+                              1f
+                          ).apply {
+                              marginStart = 4
+                              marginEnd = 4
+                          }
+                          setOnClickListener {
+                              playTapEffects()
+                              currentInputConnection?.commitText(variant, 1)
+                              altCharVisible = false
+                              altCharBar.visibility = View.GONE
+                              if (isShifted) {
+                                  isShifted = false
+                                  rebuildKeys()
+                              }
+                              showBadgeMessage("✓ $variant")
+                          }
+                      })
+                  }
+                  altCharBar.visibility = View.VISIBLE
+                  altCharVisible = true
+                  vibrateMs(24L)
+                  showBadgeMessage("Выбери букву: ${variants.joinToString(" / ")}", keepVisible = true)
               }
 
               private class CuteCatWatermarkDrawable(
@@ -1261,7 +1310,9 @@ jobs:
                   clipboardVisible = !clipboardVisible
                   if (clipboardVisible) {
                       emojiVisible = false
+                      altCharVisible = false
                       if (::emojiBar.isInitialized) emojiBar.visibility = View.GONE
+                      if (::altCharBar.isInitialized) altCharBar.visibility = View.GONE
                   }
                   rebuildClipboardBar()
                   if (::clipboardBar.isInitialized) {
@@ -1316,7 +1367,7 @@ jobs:
               }
 
               private val hideBadgeRunnable = Runnable {
-                  if (::keyPreviewBadge.isInitialized && !isListening && !isDeletingHeld) {
+                  if (::keyPreviewBadge.isInitialized && !isListening && !isDeletingHeld && !altCharVisible) {
                       keyPreviewBadge.animate().alpha(0.45f).setDuration(200L).start()
                   }
               }
@@ -1438,7 +1489,9 @@ jobs:
                   emojiVisible = !emojiVisible
                   if (emojiVisible) {
                       clipboardVisible = false
+                      altCharVisible = false
                       if (::clipboardBar.isInitialized) clipboardBar.visibility = View.GONE
+                      if (::altCharBar.isInitialized) altCharBar.visibility = View.GONE
                   }
                   if (::emojiBar.isInitialized) {
                       emojiBar.visibility = if (emojiVisible) View.VISIBLE else View.GONE
@@ -1448,6 +1501,7 @@ jobs:
 
               private fun rebuildKeys() {
                   stopHoldDelete(null)
+                  altCharVisible = false
                   rootLayout.removeAllViews()
 
                   val topBar = LinearLayout(this).apply {
@@ -1494,7 +1548,7 @@ jobs:
                   rootLayout.addView(topBar)
 
                   keyPreviewBadge = TextView(this).apply {
-                      text = if (isEnglish) "EN • hold space for voice" else "RU • зажми пробел для голоса"
+                      text = if (isEnglish) "EN • hold space for voice" else "RU • зажми «е» для ё/ю"
                       textSize = 12f
                       typeface = Typeface.DEFAULT_BOLD
                       setTextColor(Color.WHITE)
@@ -1511,6 +1565,19 @@ jobs:
                       }
                   }
                   rootLayout.addView(keyPreviewBadge)
+
+                  altCharBar = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER
+                      visibility = View.GONE
+                      layoutParams = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply {
+                          bottomMargin = 6
+                      }
+                  }
+                  rootLayout.addView(altCharBar)
 
                   clipboardBar = LinearLayout(this).apply {
                       orientation = LinearLayout.HORIZONTAL
@@ -1611,6 +1678,7 @@ jobs:
                           val isEnterBtn = rawLabel == "↵"
                           val isDeleteBtn = rawLabel == "⌫"
                           val isLetter = rawLabel.length == 1 && rawLabel[0].isLetter()
+                          val supportsAlt = !isEnglish && rawLabel.equals("е", ignoreCase = true)
                           val displayLabel = when {
                               isSpace -> "$rawLabel (🎤)"
                               isLetter && isShifted -> rawLabel.uppercase()
@@ -1670,8 +1738,18 @@ jobs:
                                           toggleShift()
                                           return@setOnClickListener
                                       }
+                                      if (altCharVisible) {
+                                          altCharVisible = false
+                                          if (::altCharBar.isInitialized) altCharBar.visibility = View.GONE
+                                      }
                                       showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, 22f)
                                       handleKey(displayLabel)
+                                  }
+                              }
+                              if (supportsAlt) {
+                                  setOnLongClickListener {
+                                      showAltCharPicker(rawLabel)
+                                      true
                                   }
                               }
                               if (isSpace) {
