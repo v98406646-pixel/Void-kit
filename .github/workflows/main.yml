@@ -467,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>На клавиатуре <b>VoidKeys</b> есть кнопка <b>🌐 RU/EN</b> рядом с пробелом для смены языка, <b>⇧</b> для заглавных, <b>☺</b> для смайликов и <b>долгое нажатие пробела</b> для голоса.</div>
+                <div>На клавиатуре <b>VoidKeys</b> под кнопками просвечивает милый котик 🐱, есть кнопка <b>🌐 RU/EN</b>, <b>⇧</b>, <b>☺</b> и <b>долгое нажатие пробела</b> для голоса.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -845,9 +845,16 @@ jobs:
           import android.content.Context
           import android.content.Intent
           import android.content.pm.PackageManager
+          import android.graphics.Canvas
           import android.graphics.Color
+          import android.graphics.ColorFilter
+          import android.graphics.Paint
+          import android.graphics.Path
+          import android.graphics.PixelFormat
           import android.graphics.Typeface
+          import android.graphics.drawable.Drawable
           import android.graphics.drawable.GradientDrawable
+          import android.graphics.drawable.LayerDrawable
           import android.inputmethodservice.InputMethodService
           import android.media.AudioAttributes
           import android.media.SoundPool
@@ -882,7 +889,7 @@ jobs:
               private var currentPitch: Float = 1.15f
               private var currentVibMs: Long = 16L
               private var currentStrokeColor: Int = Color.parseColor("#80C4B5FD")
-              private var currentKeyFill: Int = Color.parseColor("#CC1B1438")
+              private var currentKeyFill: Int = Color.parseColor("#B81B1438")
               private var currentAccentFill: Int = Color.parseColor("#CC6D28D9")
               private var currentPopColor: Int = Color.parseColor("#A855F7")
               private var emojiVisible = false
@@ -910,6 +917,145 @@ jobs:
                   listOf("⇧", "z", "x", "c", "v", "b", "n", "m", "⌫"),
                   listOf("☺", "🌐 EN", "space", "↵")
               )
+
+              private class CuteCatWatermarkDrawable(
+                  private val tintColor: Int
+              ) : Drawable() {
+                  private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      color = tintColor
+                      alpha = 46
+                      style = Paint.Style.FILL
+                  }
+                  private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      color = tintColor
+                      alpha = 72
+                      style = Paint.Style.STROKE
+                      strokeWidth = 4.5f
+                      strokeCap = Paint.Cap.ROUND
+                      strokeJoin = Paint.Join.ROUND
+                  }
+                  private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      color = Color.parseColor("#FF8FAB")
+                      alpha = 52
+                      style = Paint.Style.FILL
+                  }
+
+                  override fun draw(canvas: Canvas) {
+                      val w = bounds.width().toFloat()
+                      val h = bounds.height().toFloat()
+                      if (w <= 0f || h <= 0f) return
+
+                      val cx = w * 0.5f
+                      val cy = h * 0.56f
+                      val radius = minOf(w, h) * 0.25f
+
+                      // Ушки милого котика
+                      val leftEar = Path().apply {
+                          moveTo(cx - radius * 0.85f, cy - radius * 0.45f)
+                          lineTo(cx - radius * 0.92f, cy - radius * 1.28f)
+                          lineTo(cx - radius * 0.22f, cy - radius * 0.88f)
+                          close()
+                      }
+                      val rightEar = Path().apply {
+                          moveTo(cx + radius * 0.85f, cy - radius * 0.45f)
+                          lineTo(cx + radius * 0.92f, cy - radius * 1.28f)
+                          lineTo(cx + radius * 0.22f, cy - radius * 0.88f)
+                          close()
+                      }
+                      canvas.drawPath(leftEar, bodyPaint)
+                      canvas.drawPath(rightEar, bodyPaint)
+                      canvas.drawPath(leftEar, linePaint)
+                      canvas.drawPath(rightEar, linePaint)
+
+                      // Голова котика
+                      canvas.drawCircle(cx, cy, radius, bodyPaint)
+                      canvas.drawCircle(cx, cy, radius, linePaint)
+
+                      // Щёчки (румянец)
+                      canvas.drawCircle(cx - radius * 0.56f, cy + radius * 0.14f, radius * 0.16f, blushPaint)
+                      canvas.drawCircle(cx + radius * 0.56f, cy + radius * 0.14f, radius * 0.16f, blushPaint)
+
+                      // Глазки-дужки
+                      val eyeY = cy - radius * 0.08f
+                      val eyeOffsetX = radius * 0.36f
+                      val eyeR = radius * 0.14f
+                      canvas.drawArc(
+                          cx - eyeOffsetX - eyeR,
+                          eyeY - eyeR,
+                          cx - eyeOffsetX + eyeR,
+                          eyeY + eyeR,
+                          190f,
+                          160f,
+                          false,
+                          linePaint
+                      )
+                      canvas.drawArc(
+                          cx + eyeOffsetX - eyeR,
+                          eyeY - eyeR,
+                          cx + eyeOffsetX + eyeR,
+                          eyeY + eyeR,
+                          190f,
+                          160f,
+                          false,
+                          linePaint
+                      )
+
+                      // Носик и милая улыбка "w"
+                      val noseY = cy + radius * 0.14f
+                      val nosePath = Path().apply {
+                          moveTo(cx - radius * 0.09f, noseY - radius * 0.04f)
+                          lineTo(cx + radius * 0.09f, noseY - radius * 0.04f)
+                          lineTo(cx, noseY + radius * 0.07f)
+                          close()
+                      }
+                      canvas.drawPath(nosePath, linePaint)
+
+                      val mouthY = noseY + radius * 0.07f
+                      canvas.drawArc(
+                          cx - radius * 0.22f,
+                          mouthY - radius * 0.06f,
+                          cx,
+                          mouthY + radius * 0.12f,
+                          15f,
+                          150f,
+                          false,
+                          linePaint
+                      )
+                      canvas.drawArc(
+                          cx,
+                          mouthY - radius * 0.06f,
+                          cx + radius * 0.22f,
+                          mouthY + radius * 0.12f,
+                          15f,
+                          150f,
+                          false,
+                          linePaint
+                      )
+
+                      // Усики слева и справа
+                      val whiskY1 = cy + radius * 0.08f
+                      val whiskY2 = cy + radius * 0.24f
+                      canvas.drawLine(cx - radius * 0.72f, whiskY1, cx - radius * 1.38f, whiskY1 - radius * 0.08f, linePaint)
+                      canvas.drawLine(cx - radius * 0.72f, whiskY2, cx - radius * 1.38f, whiskY2 + radius * 0.06f, linePaint)
+                      canvas.drawLine(cx + radius * 0.72f, whiskY1, cx + radius * 1.38f, whiskY1 - radius * 0.08f, linePaint)
+                      canvas.drawLine(cx + radius * 0.72f, whiskY2, cx + radius * 1.38f, whiskY2 + radius * 0.06f, linePaint)
+                  }
+
+                  override fun setAlpha(alpha: Int) {
+                      bodyPaint.alpha = alpha
+                      linePaint.alpha = alpha
+                      invalidateSelf()
+                  }
+
+                  override fun setColorFilter(colorFilter: ColorFilter?) {
+                      bodyPaint.colorFilter = colorFilter
+                      linePaint.colorFilter = colorFilter
+                      invalidateSelf()
+                  }
+
+                  @Deprecated("Deprecated in Java")
+                  override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+              }
 
               override fun onCreate() {
                   super.onCreate()
@@ -965,7 +1111,7 @@ jobs:
                       "cyber" -> {
                           currentPitch = 1.35f
                           currentVibMs = 14L
-                          currentKeyFill = Color.parseColor("#CC0A2E42")
+                          currentKeyFill = Color.parseColor("#B80A2E42")
                           currentAccentFill = Color.parseColor("#CC0891B2")
                           currentStrokeColor = Color.parseColor("#9922D3EE")
                           currentPopColor = Color.parseColor("#06B6D4")
@@ -974,7 +1120,7 @@ jobs:
                       "horror" -> {
                           currentPitch = 0.72f
                           currentVibMs = 32L
-                          currentKeyFill = Color.parseColor("#CC2B080E")
+                          currentKeyFill = Color.parseColor("#B82B080E")
                           currentAccentFill = Color.parseColor("#CC991B1B")
                           currentStrokeColor = Color.parseColor("#99F87171")
                           currentPopColor = Color.parseColor("#EF4444")
@@ -983,7 +1129,7 @@ jobs:
                       "gaming" -> {
                           currentPitch = 1.08f
                           currentVibMs = 22L
-                          currentKeyFill = Color.parseColor("#CC07291E")
+                          currentKeyFill = Color.parseColor("#B807291E")
                           currentAccentFill = Color.parseColor("#CC059669")
                           currentStrokeColor = Color.parseColor("#9934D399")
                           currentPopColor = Color.parseColor("#10B981")
@@ -992,7 +1138,7 @@ jobs:
                       "gold" -> {
                           currentPitch = 0.92f
                           currentVibMs = 18L
-                          currentKeyFill = Color.parseColor("#CC2B1604")
+                          currentKeyFill = Color.parseColor("#B82B1604")
                           currentAccentFill = Color.parseColor("#CCB45309")
                           currentStrokeColor = Color.parseColor("#99FBBF24")
                           currentPopColor = Color.parseColor("#F59E0B")
@@ -1001,7 +1147,7 @@ jobs:
                       "crystal" -> {
                           currentPitch = 1.45f
                           currentVibMs = 12L
-                          currentKeyFill = Color.parseColor("#CC240A3D")
+                          currentKeyFill = Color.parseColor("#B8240A3D")
                           currentAccentFill = Color.parseColor("#CCB026B9")
                           currentStrokeColor = Color.parseColor("#99F0ABFC")
                           currentPopColor = Color.parseColor("#E879F9")
@@ -1010,20 +1156,22 @@ jobs:
                       else -> {
                           currentPitch = 1.15f
                           currentVibMs = 16L
-                          currentKeyFill = Color.parseColor("#CC1B1438")
+                          currentKeyFill = Color.parseColor("#B81B1438")
                           currentAccentFill = Color.parseColor("#CC6D28D9")
                           currentStrokeColor = Color.parseColor("#99C4B5FD")
                           currentPopColor = Color.parseColor("#A855F7")
                           intArrayOf(Color.parseColor("#1E083B"), Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                       }
                   }
-                  rootLayout.background = GradientDrawable(
+                  val bgDrawable = GradientDrawable(
                       GradientDrawable.Orientation.TL_BR,
                       colors
                   ).apply {
                       cornerRadius = 34f
                       setStroke(2, currentStrokeColor)
                   }
+                  val catDrawable = CuteCatWatermarkDrawable(Color.WHITE)
+                  rootLayout.background = LayerDrawable(arrayOf(bgDrawable, catDrawable))
               }
 
               private fun cycleTheme() {
