@@ -249,7 +249,7 @@ jobs:
                 font-family: system-ui, -apple-system, sans-serif;
                 background: #0b0718;
                 color: #ffffff;
-                padding-bottom: 86px;
+                padding-bottom: 88px;
               }
               .topbar {
                 position: sticky;
@@ -290,6 +290,59 @@ jobs:
                 color: #fff; border: none; border-radius: 12px;
                 padding: 10px 16px; font-weight: 700; font-size: 13px;
               }
+              .guide-card {
+                margin: 0 14px 14px;
+                padding: 14px;
+                border-radius: 20px;
+                background: #17102e;
+                border: 1px solid rgba(167, 139, 250, 0.35);
+              }
+              .guide-title {
+                margin: 0 0 10px;
+                font-size: 15px;
+                font-weight: 800;
+                color: #f3e8ff;
+              }
+              .step-line {
+                display: flex;
+                gap: 8px;
+                align-items: flex-start;
+                font-size: 12px;
+                line-height: 1.45;
+                color: #ddd6fe;
+                margin-bottom: 8px;
+              }
+              .step-num {
+                min-width: 20px;
+                height: 20px;
+                border-radius: 999px;
+                background: #7c3aed;
+                color: #fff;
+                font-weight: 800;
+                font-size: 11px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-top: 1px;
+              }
+              .setup-btns {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-top: 10px;
+              }
+              .setup-btn {
+                border: none;
+                border-radius: 12px;
+                padding: 11px 10px;
+                font-size: 12px;
+                font-weight: 800;
+                color: #fff;
+                background: linear-gradient(90deg, #7c3aed, #6366f1);
+              }
+              .setup-btn.alt {
+                background: linear-gradient(90deg, #0e7490, #4f46e5);
+              }
               .cats {
                 display: flex; gap: 8px; padding: 0 14px 12px; overflow-x: auto;
               }
@@ -316,8 +369,11 @@ jobs:
                 border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px;
               }
               .preview {
-                height: 82px; border-radius: 12px; padding: 8px; position: relative;
+                height: 86px; border-radius: 12px; padding: 6px 8px 8px; position: relative;
                 display: flex; flex-direction: column; justify-content: space-between;
+              }
+              .preview-top {
+                display: flex; justify-content: flex-end; align-items: center; min-height: 22px;
               }
               .mini-row { display: flex; justify-content: space-between; gap: 3px; }
               .mini-key {
@@ -326,8 +382,8 @@ jobs:
                 display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700;
               }
               .fav-btn {
-                position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
-                border-radius: 50%; border: none; background: rgba(0,0,0,0.45); color: #fff; font-size: 12px;
+                width: 22px; height: 22px;
+                border-radius: 50%; border: none; background: rgba(0,0,0,0.45); color: #fff; font-size: 11px;
               }
               .card-title { font-size: 14px; font-weight: 800; }
               .card-sub { font-size: 11px; color: #c4b5fd; }
@@ -386,15 +442,35 @@ jobs:
                 </div>
               </div>
               <div class="top-actions">
+                <button class="icon-btn" onclick="focusGuide()">⚙️</button>
                 <button class="icon-btn" onclick="focusTest()">⌨️</button>
-                <button class="icon-btn" onclick="askMic()">🎤</button>
               </div>
             </div>
 
             <div class="hero">
               <h2>У каждой клавиатуры свой звук 💎</h2>
-              <p>Сначала включи VoidKeys в настройках ввода, выбери её в списке клавиатур и протестируй звуки прямо ниже.</p>
-              <button class="hero-btn" onclick="focusTest()">Проверить печать и звук →</button>
+              <p>Сделай 2 нажатия по кнопкам ниже, чтобы включить VoidKeys в системе и сменить стандартную клавиатуру.</p>
+              <button class="hero-btn" onclick="focusGuide()">Как включить клавиатуру →</button>
+            </div>
+
+            <div class="guide-card" id="guideCard">
+              <div class="guide-title">Инструкция: куда нажать, чтобы заработала</div>
+              <div class="step-line">
+                <div class="step-num">1</div>
+                <div>Нажми <b>«1. Включить VoidKeys»</b> — откроется экран «Экранная клавиатура». Включи ползунок рядом с <b>VoidKeys</b>.</div>
+              </div>
+              <div class="step-line">
+                <div class="step-num">2</div>
+                <div>Нажми <b>«2. Выбрать вместо старой»</b> — откроется окно выбора клавиатуры. Выбери <b>VoidKeys</b> вместо Яндекс Клавиатуры.</div>
+              </div>
+              <div class="step-line">
+                <div class="step-num">3</div>
+                <div>Нажми в любое поле ввода текста (или проверь звук ниже). Если внизу появится значок клавиатуры — нажми его и выбери <b>VoidKeys</b>.</div>
+              </div>
+              <div class="setup-btns">
+                <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
+                <button class="setup-btn alt" onclick="openImePicker()">2. Выбрать вместо старой</button>
+              </div>
             </div>
 
             <div class="cats" id="cats"></div>
@@ -425,8 +501,8 @@ jobs:
                 </div>
               </div>
               <div class="action-row">
-                <button class="sec-btn" onclick="openImeSettings()">1. Включить в настройках</button>
-                <button class="sec-btn" onclick="openImePicker()">2. Выбрать вместо старой</button>
+                <button class="sec-btn" onclick="openImeSettings()">1. Экранная клавиатура</button>
+                <button class="sec-btn" onclick="openImePicker()">2. Выбор клавиатуры</button>
                 <button class="sec-btn" onclick="askMic()">🎤 Микрофон</button>
                 <button class="sec-btn" onclick="playThemeSound(activeId)">🔊 Звук темы</button>
               </div>
@@ -435,7 +511,7 @@ jobs:
             <div class="bottom-nav">
               <button class="nav-item active" id="navHome" onclick="setTab('home')">🏠<span>Главная</span></button>
               <button class="nav-item" id="navFav" onclick="setTab('fav')">★<span>Избранное</span></button>
-              <button class="nav-item" id="navIme" onclick="setTab('ime')">⌨️<span>Клавиатура</span></button>
+              <button class="nav-item" id="navIme" onclick="setTab('ime')">⚙️<span>Настройка</span></button>
             </div>
 
             <script>
@@ -514,6 +590,11 @@ jobs:
                 }
               }
 
+              function focusGuide() {
+                const el = document.getElementById("guideCard");
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+
               function focusTest() {
                 const el = document.getElementById("testBox");
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -550,7 +631,7 @@ jobs:
                 document.getElementById("navFav").classList.toggle("active", tab === "fav");
                 document.getElementById("navIme").classList.toggle("active", tab === "ime");
                 if (tab === "ime") {
-                  focusTest();
+                  focusGuide();
                 }
                 render();
               }
@@ -590,7 +671,9 @@ jobs:
                   card.className = "card";
                   card.innerHTML = `
                     <div class="preview" style="background:${t.bg}">
-                      <button class="fav-btn" onclick="toggleFav('${t.id}', event)">${isFav ? "♥" : "♡"}</button>
+                      <div class="preview-top">
+                        <button class="fav-btn" onclick="toggleFav('${t.id}', event)">${isFav ? "♥" : "♡"}</button>
+                      </div>
                       <div class="mini-row">
                         <div class="mini-key">Q</div><div class="mini-key">W</div><div class="mini-key">E</div><div class="mini-key">R</div>
                       </div>
