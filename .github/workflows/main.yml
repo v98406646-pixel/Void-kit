@@ -846,6 +846,7 @@ jobs:
           import android.content.Intent
           import android.content.pm.PackageManager
           import android.graphics.Color
+          import android.graphics.Typeface
           import android.graphics.drawable.GradientDrawable
           import android.inputmethodservice.InputMethodService
           import android.media.AudioAttributes
@@ -880,6 +881,10 @@ jobs:
               private val handler = Handler(Looper.getMainLooper())
               private var currentPitch: Float = 1.15f
               private var currentVibMs: Long = 16L
+              private var currentStrokeColor: Int = Color.parseColor("#80C4B5FD")
+              private var currentKeyFill: Int = Color.parseColor("#CC1B1438")
+              private var currentAccentFill: Int = Color.parseColor("#CC6D28D9")
+              private var currentPopColor: Int = Color.parseColor("#A855F7")
               private var emojiVisible = false
               private var clipboardVisible = false
               private var isEnglish = false
@@ -925,7 +930,7 @@ jobs:
               override fun onCreateInputView(): View {
                   rootLayout = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
-                      setPadding(12, 10, 12, 20)
+                      setPadding(12, 10, 12, 22)
                   }
                   applyTheme()
                   rebuildKeys()
@@ -936,6 +941,20 @@ jobs:
                   super.onStartInputView(info, restarting)
                   if (::rootLayout.isInitialized) {
                       applyTheme()
+                      rebuildKeys()
+                  }
+              }
+
+              private fun makeKeyDrawable(
+                  fillColor: Int,
+                  strokeColor: Int = currentStrokeColor,
+                  radius: Float = 22f,
+                  strokeWidth: Int = 2
+              ): GradientDrawable {
+                  return GradientDrawable().apply {
+                      setColor(fillColor)
+                      cornerRadius = radius
+                      setStroke(strokeWidth, strokeColor)
                   }
               }
 
@@ -946,39 +965,64 @@ jobs:
                       "cyber" -> {
                           currentPitch = 1.35f
                           currentVibMs = 14L
-                          intArrayOf(Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
+                          currentKeyFill = Color.parseColor("#CC0A2E42")
+                          currentAccentFill = Color.parseColor("#CC0891B2")
+                          currentStrokeColor = Color.parseColor("#9922D3EE")
+                          currentPopColor = Color.parseColor("#06B6D4")
+                          intArrayOf(Color.parseColor("#083344"), Color.parseColor("#0E7490"), Color.parseColor("#1E1B4B"))
                       }
                       "horror" -> {
                           currentPitch = 0.72f
                           currentVibMs = 32L
-                          intArrayOf(Color.parseColor("#7F1D1D"), Color.parseColor("#1F090D"))
+                          currentKeyFill = Color.parseColor("#CC2B080E")
+                          currentAccentFill = Color.parseColor("#CC991B1B")
+                          currentStrokeColor = Color.parseColor("#99F87171")
+                          currentPopColor = Color.parseColor("#EF4444")
+                          intArrayOf(Color.parseColor("#2A060B"), Color.parseColor("#7F1D1D"), Color.parseColor("#140508"))
                       }
                       "gaming" -> {
                           currentPitch = 1.08f
                           currentVibMs = 22L
-                          intArrayOf(Color.parseColor("#065F46"), Color.parseColor("#111827"))
+                          currentKeyFill = Color.parseColor("#CC07291E")
+                          currentAccentFill = Color.parseColor("#CC059669")
+                          currentStrokeColor = Color.parseColor("#9934D399")
+                          currentPopColor = Color.parseColor("#10B981")
+                          intArrayOf(Color.parseColor("#052E22"), Color.parseColor("#065F46"), Color.parseColor("#0F172A"))
                       }
                       "gold" -> {
                           currentPitch = 0.92f
                           currentVibMs = 18L
-                          intArrayOf(Color.parseColor("#92400E"), Color.parseColor("#451A03"))
+                          currentKeyFill = Color.parseColor("#CC2B1604")
+                          currentAccentFill = Color.parseColor("#CCB45309")
+                          currentStrokeColor = Color.parseColor("#99FBBF24")
+                          currentPopColor = Color.parseColor("#F59E0B")
+                          intArrayOf(Color.parseColor("#291304"), Color.parseColor("#92400E"), Color.parseColor("#1C1006"))
                       }
                       "crystal" -> {
                           currentPitch = 1.45f
                           currentVibMs = 12L
-                          intArrayOf(Color.parseColor("#6D28D9"), Color.parseColor("#A21CAF"))
+                          currentKeyFill = Color.parseColor("#CC240A3D")
+                          currentAccentFill = Color.parseColor("#CCB026B9")
+                          currentStrokeColor = Color.parseColor("#99F0ABFC")
+                          currentPopColor = Color.parseColor("#E879F9")
+                          intArrayOf(Color.parseColor("#2E074A"), Color.parseColor("#6D28D9"), Color.parseColor("#86198F"))
                       }
                       else -> {
                           currentPitch = 1.15f
                           currentVibMs = 16L
-                          intArrayOf(Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
+                          currentKeyFill = Color.parseColor("#CC1B1438")
+                          currentAccentFill = Color.parseColor("#CC6D28D9")
+                          currentStrokeColor = Color.parseColor("#99C4B5FD")
+                          currentPopColor = Color.parseColor("#A855F7")
+                          intArrayOf(Color.parseColor("#1E083B"), Color.parseColor("#3B0764"), Color.parseColor("#1D4ED8"))
                       }
                   }
                   rootLayout.background = GradientDrawable(
-                      GradientDrawable.Orientation.TOP_BOTTOM,
+                      GradientDrawable.Orientation.TL_BR,
                       colors
                   ).apply {
-                      cornerRadius = 32f
+                      cornerRadius = 34f
+                      setStroke(2, currentStrokeColor)
                   }
               }
 
@@ -988,6 +1032,7 @@ jobs:
                   val next = themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.size]
                   prefs.edit().putString("active_theme", next).apply()
                   applyTheme()
+                  rebuildKeys()
                   showBadgeMessage("✨ Тема: $next")
               }
 
@@ -1039,8 +1084,9 @@ jobs:
                   clipboardBar.addView(Button(this).apply {
                       text = label
                       isAllCaps = false
+                      typeface = Typeface.DEFAULT_BOLD
                       setTextColor(Color.WHITE)
-                      setBackgroundColor(Color.parseColor("#352F63"))
+                      background = makeKeyDrawable(currentAccentFill, currentStrokeColor, 20f, 2)
                       layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           92
@@ -1072,25 +1118,31 @@ jobs:
                   if (!keepVisible) {
                       handler.postDelayed({
                           if (::keyPreviewBadge.isInitialized && !isListening) {
-                              keyPreviewBadge.animate().alpha(0.35f).setDuration(200L).start()
+                              keyPreviewBadge.animate().alpha(0.45f).setDuration(200L).start()
                           }
                       }, 500L)
                   }
               }
 
-              private fun showKeyAnimation(btn: Button, label: String, defaultColor: Int = Color.parseColor("#28254A")) {
+              private fun showKeyAnimation(
+                  btn: Button,
+                  label: String,
+                  defaultFill: Int = currentKeyFill,
+                  defaultStroke: Int = currentStrokeColor,
+                  radius: Float = 22f
+              ) {
                   btn.animate().cancel()
-                  btn.scaleX = 1.16f
-                  btn.scaleY = 1.16f
+                  btn.scaleX = 1.15f
+                  btn.scaleY = 1.15f
                   btn.translationY = -8f
-                  btn.setBackgroundColor(Color.parseColor("#8B5CF6"))
+                  btn.background = makeKeyDrawable(currentPopColor, Color.WHITE, radius, 2)
                   btn.animate()
                       .scaleX(1.0f)
                       .scaleY(1.0f)
                       .translationY(0f)
                       .setDuration(130L)
                       .withEndAction {
-                          btn.setBackgroundColor(defaultColor)
+                          btn.background = makeKeyDrawable(defaultFill, defaultStroke, radius, 2)
                       }
                       .start()
 
@@ -1224,11 +1276,12 @@ jobs:
                       topBar.addView(Button(this).apply {
                           text = iconText
                           isAllCaps = false
+                          typeface = Typeface.DEFAULT_BOLD
                           setTextColor(Color.WHITE)
-                          setBackgroundColor(Color.parseColor("#2A2454"))
+                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 18f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              88,
+                              86,
                               1f
                           ).apply {
                               marginStart = 3
@@ -1245,14 +1298,12 @@ jobs:
                   keyPreviewBadge = TextView(this).apply {
                       text = if (isEnglish) "EN • hold space for voice" else "RU • зажми пробел для голоса"
                       textSize = 12f
+                      typeface = Typeface.DEFAULT_BOLD
                       setTextColor(Color.WHITE)
                       gravity = Gravity.CENTER
-                      alpha = 0.45f
-                      background = GradientDrawable().apply {
-                          setColor(Color.parseColor("#4C1D95"))
-                          cornerRadius = 18f
-                      }
-                      setPadding(20, 4, 20, 4)
+                      alpha = 0.5f
+                      background = makeKeyDrawable(currentAccentFill, currentStrokeColor, 20f, 1)
+                      setPadding(24, 5, 24, 5)
                       layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1292,17 +1343,17 @@ jobs:
                           text = em
                           isAllCaps = false
                           setTextColor(Color.WHITE)
-                          setBackgroundColor(Color.parseColor("#352F63"))
+                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 18f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              92,
+                              90,
                               1f
                           ).apply {
                               marginStart = 2
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, em, Color.parseColor("#352F63"))
+                              showKeyAnimation(this, em, currentKeyFill, currentStrokeColor, 18f)
                               playTapEffects()
                               currentInputConnection?.commitText(em, 1)
                           }
@@ -1324,18 +1375,19 @@ jobs:
                       numbersView.addView(Button(this).apply {
                           text = num
                           isAllCaps = false
+                          typeface = Typeface.DEFAULT_BOLD
                           setTextColor(Color.WHITE)
-                          setBackgroundColor(Color.parseColor("#231F42"))
+                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 16f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              88,
+                              84,
                               1f
                           ).apply {
                               marginStart = 2
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, num, Color.parseColor("#231F42"))
+                              showKeyAnimation(this, num, currentKeyFill, currentStrokeColor, 16f)
                               handleKey(num)
                           }
                       })
@@ -1358,23 +1410,26 @@ jobs:
                           val isSpace = rawLabel == "пробел" || rawLabel == "space"
                           val isLangBtn = rawLabel.startsWith("🌐")
                           val isShiftBtn = rawLabel == "⇧"
+                          val isEnterBtn = rawLabel == "↵"
                           val isLetter = rawLabel.length == 1 && rawLabel[0].isLetter()
                           val displayLabel = when {
                               isSpace -> "$rawLabel (🎤)"
                               isLetter && isShifted -> rawLabel.uppercase()
                               else -> rawLabel
                           }
-                          val baseColor = when {
-                              isLangBtn -> Color.parseColor("#3B3370")
-                              isShiftBtn && isShifted -> Color.parseColor("#6D28D9")
-                              else -> Color.parseColor("#28254A")
+                          val baseFill = when {
+                              isEnterBtn || (isShiftBtn && isShifted) -> currentAccentFill
+                              isLangBtn || rawLabel == "⌫" || rawLabel == "☺" || isShiftBtn -> currentPopColor
+                              else -> currentKeyFill
                           }
 
                           rowView.addView(Button(this).apply {
                               text = displayLabel
                               isAllCaps = false
+                              typeface = Typeface.DEFAULT_BOLD
+                              textSize = if (isSpace || isLangBtn) 13f else 15f
                               setTextColor(Color.WHITE)
-                              setBackgroundColor(baseColor)
+                              background = makeKeyDrawable(baseFill, currentStrokeColor, 22f, 2)
                               val weight = when {
                                   isSpace -> 3.0f
                                   isLangBtn -> 1.4f
@@ -1400,7 +1455,7 @@ jobs:
                                       toggleShift()
                                       return@setOnClickListener
                                   }
-                                  showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseColor)
+                                  showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, 22f)
                                   handleKey(displayLabel)
                               }
                               if (isSpace) {
