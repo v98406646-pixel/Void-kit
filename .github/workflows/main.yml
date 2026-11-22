@@ -115,6 +115,35 @@ jobs:
               with open(path, "wb") as f:
                   f.write(png)
 
+          def write_theme_wav(path, wave_type, f_start, f_end, dur_sec=0.042, amp=15500):
+              parent = os.path.dirname(path)
+              if parent:
+                  os.makedirs(parent, exist_ok=True)
+              rate = 22050
+              frames = max(1, int(rate * dur_sec))
+              with wave.open(path, "w") as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(rate)
+                  for i in range(frames):
+                      t = i / frames
+                      env = 1.0 - t
+                      freq = f_start + (f_end - f_start) * t
+                      phase = 2.0 * math.pi * freq * (i / rate)
+                      if wave_type == "square":
+                          val = 0.75 if math.sin(phase) >= 0.0 else -0.75
+                      elif wave_type == "sawtooth":
+                          cyc = (phase / (2.0 * math.pi))
+                          val = 2.0 * (cyc - math.floor(0.5 + cyc))
+                      elif wave_type == "triangle":
+                          cyc = (phase / (2.0 * math.pi))
+                          val = 2.0 * abs(2.0 * (cyc - math.floor(0.5 + cyc))) - 1.0
+                      else:
+                          val = math.sin(phase)
+                      sample = int(amp * env * val)
+                      sample = max(-32767, min(32767, sample))
+                      w.writeframes(struct.pack("<h", sample))
+
           write_file("gradle.properties", """
           android.useAndroidX=true
           kotlin.code.style=official
@@ -519,12 +548,12 @@ jobs:
 
             <script>
               const themes = [
-                { id: "void", name: "Void Neon", sub: "Космос + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.15, freq: 580, wave: "sine", bg: "linear-gradient(135deg, #3b0764, #1d4ed8)" },
-                { id: "cyber", name: "Cyber Neon", sub: "Молнии + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.35, freq: 880, wave: "sawtooth", bg: "linear-gradient(135deg, #0e7490, #312e81)" },
-                { id: "horror", name: "Horror Glitch", sub: "Черепа + Глитч", cat: "Хоррор", tag: "Хоррор", pitch: 0.72, freq: 210, wave: "square", bg: "linear-gradient(135deg, #7f1d1d, #1f090d)" },
-                { id: "gaming", name: "Gaming Pro", sub: "Звёзды + Бит", cat: "Игровые", tag: "Игровые", pitch: 1.08, freq: 440, wave: "triangle", bg: "linear-gradient(135deg, #065f46, #111827)" },
-                { id: "gold", name: "Gold Luxury", sub: "Корона + Аккорд", cat: "Милые", tag: "Люкс", pitch: 0.92, freq: 660, wave: "sine", bg: "linear-gradient(135deg, #92400e, #451a03)" },
-                { id: "crystal", name: "Crystal Magic", sub: "Алмазы + Хрусталь", cat: "Милые", tag: "Милые", pitch: 1.45, freq: 1040, wave: "sine", bg: "linear-gradient(135deg, #6d28d9, #a21caf)" }
+                { id: "void", name: "Void Neon", sub: "Космос + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.0, freq: 580, wave: "sine", bg: "linear-gradient(135deg, #3b0764, #1d4ed8)" },
+                { id: "cyber", name: "Cyber Neon", sub: "Молнии + Синт", cat: "Неоновые", tag: "Неон", pitch: 1.0, freq: 920, wave: "sawtooth", bg: "linear-gradient(135deg, #0e7490, #312e81)" },
+                { id: "horror", name: "Horror Glitch", sub: "Черепа + Глитч", cat: "Хоррор", tag: "Хоррор", pitch: 1.0, freq: 210, wave: "square", bg: "linear-gradient(135deg, #7f1d1d, #1f090d)" },
+                { id: "gaming", name: "Gaming Pro", sub: "Звёзды + Бит", cat: "Игровые", tag: "Игровые", pitch: 1.0, freq: 440, wave: "triangle", bg: "linear-gradient(135deg, #065f46, #111827)" },
+                { id: "gold", name: "Gold Luxury", sub: "Корона + Аккорд", cat: "Милые", tag: "Люкс", pitch: 1.0, freq: 680, wave: "sine", bg: "linear-gradient(135deg, #92400e, #451a03)" },
+                { id: "crystal", name: "Crystal Magic", sub: "Алмазы + Хрусталь", cat: "Милые", tag: "Милые", pitch: 1.0, freq: 1120, wave: "sine", bg: "linear-gradient(135deg, #6d28d9, #a21caf)" }
               ];
               const categories = ["Все", "Милые", "Неоновые", "Игровые", "Хоррор"];
               let selectedCat = "Все";
@@ -562,7 +591,9 @@ jobs:
               function playThemeSound(id) {
                 const t = getThemeObj(id);
                 playWebSynth(t);
-                if (window.AndroidBridge && window.AndroidBridge.playClickWithPitch) {
+                if (window.AndroidBridge && window.AndroidBridge.playThemePreview) {
+                  window.AndroidBridge.playThemePreview(t.id);
+                } else if (window.AndroidBridge && window.AndroidBridge.playClickWithPitch) {
                   window.AndroidBridge.playClickWithPitch(t.pitch);
                 }
               }
@@ -734,8 +765,8 @@ jobs:
           class MainActivity : AppCompatActivity() {
               private lateinit var webView: WebView
               private lateinit var soundPool: SoundPool
-              private var clickSoundId: Int = 0
-              private var soundLoaded = false
+              private val soundIds = mutableMapOf<String, Int>()
+              private var loadedCount = 0
               private val micRequestCode = 101
 
               inner class Bridge {
@@ -744,7 +775,7 @@ jobs:
                       getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
                           .edit()
                           .putString("active_theme", themeId)
-                          .commit()
+                          .apply()
                   }
 
                   @JavascriptInterface
@@ -774,29 +805,37 @@ jobs:
                   }
 
                   @JavascriptInterface
-                  fun playClickWithPitch(pitch: Float) {
+                  fun playThemePreview(themeId: String) {
                       runOnUiThread {
-                          if (soundLoaded) {
-                              soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, pitch.coerceIn(0.5f, 2.0f))
+                          if (loadedCount > 0) {
+                              val id = soundIds[themeId] ?: soundIds["void"] ?: 0
+                              if (id != 0) {
+                                  soundPool.play(id, 0.85f, 0.85f, 1, 0, 1.0f)
+                              }
                           }
                           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                               val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                               vm.defaultVibrator.vibrate(
-                                  VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
+                                  VibrationEffect.createOneShot(16, VibrationEffect.DEFAULT_AMPLITUDE)
                               )
                           } else {
                               @Suppress("DEPRECATION")
                               val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                   vib.vibrate(
-                                      VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
+                                      VibrationEffect.createOneShot(16, VibrationEffect.DEFAULT_AMPLITUDE)
                                   )
                               } else {
                                   @Suppress("DEPRECATION")
-                                  vib.vibrate(18)
+                                  vib.vibrate(16)
                               }
                           }
                       }
+                  }
+
+                  @JavascriptInterface
+                  fun playClickWithPitch(pitch: Float) {
+                      playThemePreview("void")
                   }
               }
 
@@ -809,13 +848,18 @@ jobs:
                       .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                       .build()
                   soundPool = SoundPool.Builder()
-                      .setMaxStreams(4)
+                      .setMaxStreams(6)
                       .setAudioAttributes(attrs)
                       .build()
-                  clickSoundId = soundPool.load(this, R.raw.click, 1)
                   soundPool.setOnLoadCompleteListener { _, _, status ->
-                      soundLoaded = (status == 0)
+                      if (status == 0) loadedCount++
                   }
+                  soundIds["void"] = soundPool.load(this, R.raw.click_void, 1)
+                  soundIds["cyber"] = soundPool.load(this, R.raw.click_cyber, 1)
+                  soundIds["horror"] = soundPool.load(this, R.raw.click_horror, 1)
+                  soundIds["gaming"] = soundPool.load(this, R.raw.click_gaming, 1)
+                  soundIds["gold"] = soundPool.load(this, R.raw.click_gold, 1)
+                  soundIds["crystal"] = soundPool.load(this, R.raw.click_crystal, 1)
 
                   webView = WebView(this).apply {
                       setBackgroundColor(Color.parseColor("#0B0718"))
@@ -858,8 +902,6 @@ jobs:
           import android.graphics.drawable.LayerDrawable
           import android.inputmethodservice.InputMethodService
           import android.media.AudioAttributes
-          import android.media.AudioFormat
-          import android.media.AudioTrack
           import android.media.SoundPool
           import android.os.Build
           import android.os.Bundle
@@ -880,13 +922,12 @@ jobs:
           import android.widget.LinearLayout
           import android.widget.TextView
           import androidx.core.content.ContextCompat
-          import kotlin.math.PI
-          import kotlin.math.sin
 
           class VoidKeysImeService : InputMethodService() {
               private lateinit var soundPool: SoundPool
-              private var clickSoundId: Int = 0
-              private var soundLoaded = false
+              private val soundIds = mutableMapOf<String, Int>()
+              private var loadedCount = 0
+              private var vibrator: Vibrator? = null
               private lateinit var rootLayout: LinearLayout
               private lateinit var suggestionBar: LinearLayout
               private lateinit var emojiBar: LinearLayout
@@ -895,9 +936,6 @@ jobs:
               private lateinit var keyPreviewBadge: TextView
               private val handler = Handler(Looper.getMainLooper())
               private var currentThemeId: String = "void"
-              private var currentPitch: Float = 1.15f
-              private var currentFreq: Double = 580.0
-              private var currentWave: String = "sine"
               private var currentVibMs: Long = 16L
               private var currentStrokeColor: Int = Color.parseColor("#B8C4B5FD")
               private var currentKeyFill: Int = Color.parseColor("#7A1B1438")
@@ -1309,18 +1347,33 @@ jobs:
 
               override fun onCreate() {
                   super.onCreate()
+                  vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                      getSystemService(Context.VIBRATOR_MANAGER_SERVICE)?.let { vm ->
+                          (vm as VibratorManager).defaultVibrator
+                      }
+                  } else {
+                      @Suppress("DEPRECATION")
+                      getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                  }
+
                   val attrs = AudioAttributes.Builder()
                       .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                       .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                       .build()
                   soundPool = SoundPool.Builder()
-                      .setMaxStreams(4)
+                      .setMaxStreams(6)
                       .setAudioAttributes(attrs)
                       .build()
-                  clickSoundId = soundPool.load(this, R.raw.click, 1)
                   soundPool.setOnLoadCompleteListener { _, _, status ->
-                      soundLoaded = (status == 0)
+                      if (status == 0) loadedCount++
                   }
+                  soundIds["void"] = soundPool.load(this, R.raw.click_void, 1)
+                  soundIds["cyber"] = soundPool.load(this, R.raw.click_cyber, 1)
+                  soundIds["horror"] = soundPool.load(this, R.raw.click_horror, 1)
+                  soundIds["gaming"] = soundPool.load(this, R.raw.click_gaming, 1)
+                  soundIds["gold"] = soundPool.load(this, R.raw.click_gold, 1)
+                  soundIds["crystal"] = soundPool.load(this, R.raw.click_crystal, 1)
+                  syncThemeParams(readSavedThemeId())
               }
 
               override fun onCreateInputView(): View {
@@ -1398,9 +1451,6 @@ jobs:
                   currentThemeId = themeId
                   when (themeId) {
                       "cyber" -> {
-                          currentPitch = 1.35f
-                          currentFreq = 880.0
-                          currentWave = "sawtooth"
                           currentVibMs = 14L
                           currentKeyFill = Color.parseColor("#7A0A2E42")
                           currentAccentFill = Color.parseColor("#CC0891B2")
@@ -1408,39 +1458,27 @@ jobs:
                           currentPopColor = Color.parseColor("#06B6D4")
                       }
                       "horror" -> {
-                          currentPitch = 0.72f
-                          currentFreq = 210.0
-                          currentWave = "square"
-                          currentVibMs = 32L
+                          currentVibMs = 28L
                           currentKeyFill = Color.parseColor("#7A2B080E")
                           currentAccentFill = Color.parseColor("#CC991B1B")
                           currentStrokeColor = Color.parseColor("#BBF87171")
                           currentPopColor = Color.parseColor("#EF4444")
                       }
                       "gaming" -> {
-                          currentPitch = 1.08f
-                          currentFreq = 440.0
-                          currentWave = "triangle"
-                          currentVibMs = 22L
+                          currentVibMs = 20L
                           currentKeyFill = Color.parseColor("#7A07291E")
                           currentAccentFill = Color.parseColor("#CC059669")
                           currentStrokeColor = Color.parseColor("#BB34D399")
                           currentPopColor = Color.parseColor("#10B981")
                       }
                       "gold" -> {
-                          currentPitch = 0.92f
-                          currentFreq = 660.0
-                          currentWave = "sine"
-                          currentVibMs = 18L
+                          currentVibMs = 16L
                           currentKeyFill = Color.parseColor("#7A2B1604")
                           currentAccentFill = Color.parseColor("#CCB45309")
                           currentStrokeColor = Color.parseColor("#BBFBBF24")
                           currentPopColor = Color.parseColor("#F59E0B")
                       }
                       "crystal" -> {
-                          currentPitch = 1.45f
-                          currentFreq = 1040.0
-                          currentWave = "sine"
                           currentVibMs = 12L
                           currentKeyFill = Color.parseColor("#7A240A3D")
                           currentAccentFill = Color.parseColor("#CCB026B9")
@@ -1449,10 +1487,7 @@ jobs:
                       }
                       else -> {
                           currentThemeId = "void"
-                          currentPitch = 1.15f
-                          currentFreq = 580.0
-                          currentWave = "sine"
-                          currentVibMs = 16L
+                          currentVibMs = 15L
                           currentKeyFill = Color.parseColor("#7A1B1438")
                           currentAccentFill = Color.parseColor("#CC6D28D9")
                           currentStrokeColor = Color.parseColor("#BBC4B5FD")
@@ -1483,64 +1518,11 @@ jobs:
                   rootLayout.background = LayerDrawable(arrayOf(bgDrawable, catDrawable))
               }
 
-              private fun playThemeSynth() {
-                  try {
-                      val sampleRate = 22050
-                      val durationSec = 0.055
-                      val numSamples = (sampleRate * durationSec).toInt()
-                      val pcm = ShortArray(numSamples)
-                      val startFreq = currentFreq
-                      val endFreq = (currentFreq * 0.56).coerceAtLeast(95.0)
-                      for (i in 0 until numSamples) {
-                          val t = i.toDouble() / numSamples
-                          val env = 1.0 - t
-                          val freq = startFreq + (endFreq - startFreq) * t
-                          val phase = 2.0 * PI * freq * (i.toDouble() / sampleRate)
-                          val rawWave = when (currentWave) {
-                              "square" -> if (sin(phase) >= 0.0) 0.75 else -0.75
-                              "sawtooth" -> 2.0 * ((phase / (2.0 * PI)) - kotlin.math.floor(0.5 + (phase / (2.0 * PI))))
-                              "triangle" -> 2.0 * kotlin.math.abs(2.0 * ((phase / (2.0 * PI)) - kotlin.math.floor(0.5 + (phase / (2.0 * PI))))) - 1.0
-                              else -> sin(phase)
-                          }
-                          pcm[i] = (rawWave * env * 13000.0).toInt().coerceIn(-32767, 32767).toShort()
-                      }
-                      val track = AudioTrack.Builder()
-                          .setAudioAttributes(
-                              AudioAttributes.Builder()
-                                  .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                                  .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                  .build()
-                          )
-                          .setAudioFormat(
-                              AudioFormat.Builder()
-                                  .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                  .setSampleRate(sampleRate)
-                                  .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                                  .build()
-                          )
-                          .setBufferSizeInBytes(pcm.size * 2)
-                          .setTransferMode(AudioTrack.MODE_STATIC)
-                          .build()
-                      track.write(pcm, 0, pcm.size)
-                      track.play()
-                      handler.postDelayed({
-                          try {
-                              track.stop()
-                              track.release()
-                          } catch (_: Exception) {}
-                      }, 120L)
-                  } catch (_: Exception) {
-                      if (soundLoaded) {
-                          soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
-                      }
-                  }
-              }
-
               private fun cycleTheme() {
                   val prefs = getSharedPreferences("voidkeys_prefs", Context.MODE_PRIVATE)
                   val current = prefs.getString("active_theme", "void") ?: "void"
                   val next = themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.size]
-                  prefs.edit().putString("active_theme", next).commit()
+                  prefs.edit().putString("active_theme", next).apply()
                   applyTheme()
                   rebuildKeys()
                   showBadgeMessage("✨ Тема: $next")
@@ -2117,34 +2099,22 @@ jobs:
               }
 
               private fun vibrateMs(ms: Long) {
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                      val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                      vm.defaultVibrator.vibrate(
-                          VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
-                      )
+                  val vib = vibrator ?: return
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      vib.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
                   } else {
                       @Suppress("DEPRECATION")
-                      val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                          vib.vibrate(
-                              VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
-                          )
-                      } else {
-                          @Suppress("DEPRECATION")
-                          vib.vibrate(ms)
-                      }
+                      vib.vibrate(ms)
                   }
               }
 
               private fun playTapEffects() {
-                  val savedTheme = readSavedThemeId()
-                  if (savedTheme != currentThemeId) {
-                      syncThemeParams(savedTheme)
-                      if (::rootLayout.isInitialized) {
-                          applyTheme()
+                  if (loadedCount > 0) {
+                      val soundId = soundIds[currentThemeId] ?: soundIds["void"] ?: 0
+                      if (soundId != 0) {
+                          soundPool.play(soundId, 0.85f, 0.85f, 1, 0, 1.0f)
                       }
                   }
-                  playThemeSynth()
                   vibrateMs(currentVibMs)
               }
 
@@ -2161,19 +2131,12 @@ jobs:
 
           write_rich_icon("app/src/main/res/drawable/ic_launcher.png")
 
-          wav_path = "app/src/main/res/raw/click.wav"
-          if not os.path.exists(wav_path):
-              os.makedirs(os.path.dirname(wav_path), exist_ok=True)
-              rate, frames = 22050, int(22050 * 0.04)
-              with wave.open(wav_path, "w") as w:
-                  w.setnchannels(1)
-                  w.setsampwidth(2)
-                  w.setframerate(rate)
-                  for i in range(frames):
-                      env = 1.0 - (i / frames)
-                      freq = 620.0 - (i / frames) * 380.0
-                      sample = int(16000 * env * math.sin(2.0 * math.pi * freq * i / rate))
-                      w.writeframes(struct.pack("<h", sample))
+          write_theme_wav("app/src/main/res/raw/click_void.wav", "sine", 580.0, 320.0)
+          write_theme_wav("app/src/main/res/raw/click_cyber.wav", "sawtooth", 920.0, 520.0)
+          write_theme_wav("app/src/main/res/raw/click_horror.wav", "square", 210.0, 115.0)
+          write_theme_wav("app/src/main/res/raw/click_gaming.wav", "triangle", 440.0, 260.0)
+          write_theme_wav("app/src/main/res/raw/click_gold.wav", "sine", 680.0, 460.0)
+          write_theme_wav("app/src/main/res/raw/click_crystal.wav", "sine", 1120.0, 740.0)
           PY
 
       - name: Build Android App APK
