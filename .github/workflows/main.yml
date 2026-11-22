@@ -202,6 +202,7 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.VIBRATE" />
               <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.INTERNET" />
 
               <application
                   android:allowBackup="true"
@@ -450,7 +451,7 @@ jobs:
 
             <div class="hero">
               <h2>У каждой клавиатуры свой звук 💎</h2>
-              <p>Сделай 2 нажатия по кнопкам ниже, чтобы включить VoidKeys в системе и сменить стандартную клавиатуру.</p>
+              <p>Включи VoidKeys, выбери её в системе, а чтобы говорить голосом — просто зажми пробел.</p>
               <button class="hero-btn" onclick="focusGuide()">Как включить клавиатуру →</button>
             </div>
 
@@ -458,7 +459,7 @@ jobs:
               <div class="guide-title">Инструкция: куда нажать, чтобы заработала</div>
               <div class="step-line">
                 <div class="step-num">1</div>
-                <div>Нажми <b>«1. Включить VoidKeys»</b> — откроется экран «Экранная клавиатура». Включи ползунок рядом с <b>VoidKeys</b> (и при необходимости <b>Google Голосовой ввод</b> для кнопки 🎤).</div>
+                <div>Нажми <b>«1. Включить VoidKeys»</b> — откроется экран «Экранная клавиатура». Включи ползунок рядом с <b>VoidKeys</b>.</div>
               </div>
               <div class="step-line">
                 <div class="step-num">2</div>
@@ -466,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>На клавиатуре <b>VoidKeys</b> появится подсказка нажатой буквы и кнопка <b>🎤</b> для переключения на голосовой ввод.</div>
+                <div>Нажми <b>«🎤 Микрофон»</b> и разреши доступ к микрофону. После этого <b>долгое нажатие на пробел</b> включает голосовой ввод и печатает речь.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -838,25 +839,32 @@ jobs:
           write_file("app/src/main/kotlin/com/example/voidkeys/VoidKeysImeService.kt", """
           package com.example.voidkeys
 
+          import android.Manifest
           import android.content.Context
+          import android.content.Intent
+          import android.content.pm.PackageManager
           import android.graphics.Color
           import android.graphics.drawable.GradientDrawable
           import android.inputmethodservice.InputMethodService
           import android.media.AudioAttributes
           import android.media.SoundPool
           import android.os.Build
+          import android.os.Bundle
           import android.os.Handler
           import android.os.Looper
           import android.os.VibrationEffect
           import android.os.Vibrator
           import android.os.VibratorManager
+          import android.speech.RecognitionListener
+          import android.speech.RecognizerIntent
+          import android.speech.SpeechRecognizer
           import android.view.Gravity
           import android.view.View
           import android.view.inputmethod.EditorInfo
-          import android.view.inputmethod.InputMethodManager
           import android.widget.Button
           import android.widget.LinearLayout
           import android.widget.TextView
+          import androidx.core.content.ContextCompat
 
           class VoidKeysImeService : InputMethodService() {
               private lateinit var soundPool: SoundPool
@@ -868,11 +876,14 @@ jobs:
               private var currentPitch: Float = 1.15f
               private var currentVibMs: Long = 16L
 
+              private var speechRecognizer: SpeechRecognizer? = null
+              private var isListening = false
+
               private val rows = listOf(
                   listOf("й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"),
                   listOf("ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"),
                   listOf("я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"),
-                  listOf("🎤", "пробел", "↵")
+                  listOf("пробел", "↵")
               )
 
               override fun onCreate() {
@@ -951,6 +962,27 @@ jobs:
                   }
               }
 
+              private fun showBadgeMessage(text: String, keepVisible: Boolean = false) {
+                  if (!::keyPreviewBadge.isInitialized) return
+                  keyPreviewBadge.text = text
+                  keyPreviewBadge.alpha = 1f
+                  keyPreviewBadge.scaleX = 1.14f
+                  keyPreviewBadge.scaleY = 1.14f
+                  keyPreviewBadge.animate()
+                      .scaleX(1.0f)
+                      .scaleY(1.0f)
+                      .setDuration(110L)
+                      .start()
+                  handler.removeCallbacksAndMessages(null)
+                  if (!keepVisible) {
+                      handler.postDelayed({
+                          if (::keyPreviewBadge.isInitialized && !isListening) {
+                              keyPreviewBadge.animate().alpha(0.35f).setDuration(200L).start()
+                          }
+                      }, 500L)
+                  }
+              }
+
               private fun showKeyAnimation(btn: Button, label: String) {
                   btn.animate().cancel()
                   btn.scaleX = 1.16f
@@ -967,22 +999,94 @@ jobs:
                       }
                       .start()
 
-                  if (::keyPreviewBadge.isInitialized) {
-                      keyPreviewBadge.text = label
-                      keyPreviewBadge.alpha = 1f
-                      keyPreviewBadge.scaleX = 1.15f
-                      keyPreviewBadge.scaleY = 1.15f
-                      keyPreviewBadge.animate()
-                          .scaleX(1.0f)
-                          .scaleY(1.0f)
-                          .setDuration(110L)
-                          .start()
-                      handler.removeCallbacksAndMessages(null)
-                      handler.postDelayed({
-                          if (::keyPreviewBadge.isInitialized) {
-                              keyPreviewBadge.animate().alpha(0.35f).setDuration(200L).start()
+                  showBadgeMessage(label)
+              }
+
+              private fun startVoiceTyping() {
+                  val hasMicPermission = ContextCompat.checkSelfPermission(
+                      this,
+                      Manifest.permission.RECORD_AUDIO
+                  ) == PackageManager.PERMISSION_GRANTED
+
+                  if (!hasMicPermission) {
+                      showBadgeMessage("Выдай микрофон в приложении VoidKeys")
+                      return
+                  }
+
+                  if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                      showBadgeMessage("Голосовой сервис недоступен")
+                      return
+                  }
+
+                  if (isListening) {
+                      speechRecognizer?.stopListening()
+                      isListening = false
+                      showBadgeMessage("Голосовой ввод остановлен")
+                      return
+                  }
+
+                  handler.post {
+                      speechRecognizer?.destroy()
+                      val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+                      speechRecognizer = recognizer
+
+                      recognizer.setRecognitionListener(object : RecognitionListener {
+                          override fun onReadyForSpeech(params: Bundle?) {
+                              isListening = true
+                              showBadgeMessage("🎤 Говорите...", keepVisible = true)
                           }
-                      }, 450L)
+
+                          override fun onBeginningOfSpeech() {
+                              showBadgeMessage("🎤 Слушаю...", keepVisible = true)
+                          }
+
+                          override fun onRmsChanged(rmsdB: Float) {}
+                          override fun onBufferReceived(buffer: ByteArray?) {}
+
+                          override fun onEndOfSpeech() {
+                              isListening = false
+                              showBadgeMessage("Распознаю...")
+                          }
+
+                          override fun onError(error: Int) {
+                              isListening = false
+                              showBadgeMessage("Не расслышал — зажми пробел снова")
+                          }
+
+                          override fun onResults(results: Bundle?) {
+                              isListening = false
+                              val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                              val spoken = matches?.firstOrNull()?.trim()
+                              if (!spoken.isNullOrEmpty()) {
+                                  currentInputConnection?.commitText("$spoken ", 1)
+                                  showBadgeMessage("✓ $spoken")
+                              } else {
+                                  showBadgeMessage("Речь не распознана")
+                              }
+                          }
+
+                          override fun onPartialResults(partialResults: Bundle?) {
+                              val partial = partialResults
+                                  ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                                  ?.firstOrNull()
+                              if (!partial.isNullOrEmpty()) {
+                                  showBadgeMessage("🎤 $partial", keepVisible = true)
+                              }
+                          }
+
+                          override fun onEvent(eventType: Int, params: Bundle?) {}
+                      })
+
+                      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                          putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                          putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+                          putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                      }
+
+                      vibrateMs(30L)
+                      isListening = true
+                      showBadgeMessage("🎤 Говорите...", keepVisible = true)
+                      recognizer.startListening(intent)
                   }
               }
 
@@ -990,8 +1094,8 @@ jobs:
                   rootLayout.removeAllViews()
 
                   keyPreviewBadge = TextView(this).apply {
-                      text = "VoidKeys"
-                      textSize = 15f
+                      text = "Зажми пробел для голоса"
+                      textSize = 14f
                       setTextColor(Color.WHITE)
                       gravity = Gravity.CENTER
                       alpha = 0.45f
@@ -1023,7 +1127,7 @@ jobs:
                       }
                       for (label in rowKeys) {
                           rowView.addView(Button(this).apply {
-                              text = label
+                              text = if (label == "пробел") "пробел (🎤 долгое нажатие)" else label
                               isAllCaps = false
                               setTextColor(Color.WHITE)
                               setBackgroundColor(Color.parseColor("#28254A"))
@@ -1037,8 +1141,14 @@ jobs:
                                   marginEnd = 4
                               }
                               setOnClickListener {
-                                  showKeyAnimation(this, label)
+                                  showKeyAnimation(this, if (label == "пробел") "␣" else label)
                                   handleKey(label)
+                              }
+                              if (label == "пробел") {
+                                  setOnLongClickListener {
+                                      startVoiceTyping()
+                                      true
+                                  }
                               }
                           })
                       }
@@ -1046,27 +1156,8 @@ jobs:
                   }
               }
 
-              private fun triggerVoiceInput() {
-                  val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                      val token = window.window?.attributes?.token
-                      if (token != null) {
-                          val switched = imm.switchToNextInputMethod(token, false)
-                          if (!switched) {
-                              imm.showInputMethodPicker()
-                          }
-                          return
-                      }
-                  }
-                  imm.showInputMethodPicker()
-              }
-
               private fun handleKey(label: String) {
                   playTapEffects()
-                  if (label == "🎤") {
-                      triggerVoiceInput()
-                      return
-                  }
                   val ic = currentInputConnection ?: return
                   when (label) {
                       "⌫" -> ic.deleteSurroundingText(1, 0)
@@ -1076,30 +1167,36 @@ jobs:
                   }
               }
 
-              private fun playTapEffects() {
-                  if (soundLoaded) {
-                      soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
-                  }
+              private fun vibrateMs(ms: Long) {
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                       val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                       vm.defaultVibrator.vibrate(
-                          VibrationEffect.createOneShot(currentVibMs, VibrationEffect.DEFAULT_AMPLITUDE)
+                          VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
                       )
                   } else {
                       @Suppress("DEPRECATION")
                       val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                           vib.vibrate(
-                              VibrationEffect.createOneShot(currentVibMs, VibrationEffect.DEFAULT_AMPLITUDE)
+                              VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
                           )
                       } else {
                           @Suppress("DEPRECATION")
-                          vib.vibrate(currentVibMs)
+                          vib.vibrate(ms)
                       }
                   }
               }
 
+              private fun playTapEffects() {
+                  if (soundLoaded) {
+                      soundPool.play(clickSoundId, 0.85f, 0.85f, 1, 0, currentPitch)
+                  }
+                  vibrateMs(currentVibMs)
+              }
+
               override fun onDestroy() {
+                  isListening = false
+                  speechRecognizer?.destroy()
                   handler.removeCallbacksAndMessages(null)
                   soundPool.release()
                   super.onDestroy()
