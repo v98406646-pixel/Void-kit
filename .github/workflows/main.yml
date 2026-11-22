@@ -467,7 +467,7 @@ jobs:
               </div>
               <div class="step-line">
                 <div class="step-num">3</div>
-                <div>На клавиатуре <b>VoidKeys</b> под кнопками просвечивает милый котик 🐱, есть кнопка <b>🌐 RU/EN</b>, <b>⇧</b>, <b>☺</b> и <b>долгое нажатие пробела</b> для голоса.</div>
+                <div>На клавиатуре <b>VoidKeys</b> под кнопками просвечивает милый котик 🐱, есть кнопка <b>🌐 RU/EN</b>, <b>⇧</b>, <b>☺</b>, зажатие <b>⌫</b> для быстрого стирания и <b>долгое нажатие пробела</b> для голоса.</div>
               </div>
               <div class="setup-btns">
                 <button class="setup-btn" onclick="openImeSettings()">1. Включить VoidKeys</button>
@@ -870,6 +870,7 @@ jobs:
           import android.speech.RecognizerIntent
           import android.speech.SpeechRecognizer
           import android.view.Gravity
+          import android.view.MotionEvent
           import android.view.View
           import android.view.inputmethod.EditorInfo
           import android.widget.Button
@@ -896,6 +897,8 @@ jobs:
               private var clipboardVisible = false
               private var isEnglish = false
               private var isShifted = false
+              private var isDeletingHeld = false
+              private var deleteRepeatCount = 0
 
               private val themeOrder = listOf("void", "cyber", "horror", "gaming", "gold", "crystal")
               private var speechRecognizer: SpeechRecognizer? = null
@@ -917,6 +920,51 @@ jobs:
                   listOf("⇧", "z", "x", "c", "v", "b", "n", "m", "⌫"),
                   listOf("☺", "🌐 EN", "space", "↵")
               )
+
+              private val holdDeleteRunnable = object : Runnable {
+                  override fun run() {
+                      if (!isDeletingHeld) return
+                      deleteRepeatCount++
+                      val countToDelete = if (deleteRepeatCount > 18) 3 else 1
+                      currentInputConnection?.deleteSurroundingText(countToDelete, 0)
+                      playTapEffects()
+                      val nextDelay = when {
+                          deleteRepeatCount > 18 -> 45L
+                          deleteRepeatCount > 6 -> 75L
+                          else -> 120L
+                      }
+                      handler.postDelayed(this, nextDelay)
+                  }
+              }
+
+              private fun startHoldDelete(btn: Button) {
+                  stopHoldDelete(btn)
+                  isDeletingHeld = true
+                  deleteRepeatCount = 0
+                  btn.scaleX = 1.14f
+                  btn.scaleY = 1.14f
+                  btn.background = makeKeyDrawable(currentPopColor, Color.WHITE, 22f, 2)
+                  currentInputConnection?.deleteSurroundingText(1, 0)
+                  playTapEffects()
+                  showBadgeMessage("⌫ стираю...", keepVisible = true)
+                  handler.postDelayed(holdDeleteRunnable, 320L)
+              }
+
+              private fun stopHoldDelete(btn: Button?) {
+                  isDeletingHeld = false
+                  deleteRepeatCount = 0
+                  handler.removeCallbacks(holdDeleteRunnable)
+                  if (btn != null) {
+                      btn.animate().cancel()
+                      btn.scaleX = 1.0f
+                      btn.scaleY = 1.0f
+                      btn.translationY = 0f
+                      btn.background = makeKeyDrawable(currentPopColor, currentStrokeColor, 22f, 2)
+                  }
+                  if (!isListening) {
+                      showBadgeMessage("⌫")
+                  }
+              }
 
               private class CuteCatWatermarkDrawable(
                   private val tintColor: Int
@@ -949,7 +997,6 @@ jobs:
                       val cy = h * 0.56f
                       val radius = minOf(w, h) * 0.27f
 
-                      // Ушки милого котика
                       val leftEar = Path().apply {
                           moveTo(cx - radius * 0.85f, cy - radius * 0.45f)
                           lineTo(cx - radius * 0.92f, cy - radius * 1.28f)
@@ -967,15 +1014,12 @@ jobs:
                       canvas.drawPath(leftEar, linePaint)
                       canvas.drawPath(rightEar, linePaint)
 
-                      // Голова котика
                       canvas.drawCircle(cx, cy, radius, bodyPaint)
                       canvas.drawCircle(cx, cy, radius, linePaint)
 
-                      // Щёчки (румянец)
                       canvas.drawCircle(cx - radius * 0.56f, cy + radius * 0.14f, radius * 0.17f, blushPaint)
                       canvas.drawCircle(cx + radius * 0.56f, cy + radius * 0.14f, radius * 0.17f, blushPaint)
 
-                      // Глазки-дужки
                       val eyeY = cy - radius * 0.08f
                       val eyeOffsetX = radius * 0.36f
                       val eyeR = radius * 0.14f
@@ -1000,7 +1044,6 @@ jobs:
                           linePaint
                       )
 
-                      // Носик и милая улыбка "w"
                       val noseY = cy + radius * 0.14f
                       val nosePath = Path().apply {
                           moveTo(cx - radius * 0.09f, noseY - radius * 0.04f)
@@ -1032,7 +1075,6 @@ jobs:
                           linePaint
                       )
 
-                      // Усики слева и справа
                       val whiskY1 = cy + radius * 0.08f
                       val whiskY2 = cy + radius * 0.24f
                       canvas.drawLine(cx - radius * 0.72f, whiskY1, cx - radius * 1.42f, whiskY1 - radius * 0.08f, linePaint)
@@ -1089,6 +1131,11 @@ jobs:
                       applyTheme()
                       rebuildKeys()
                   }
+              }
+
+              override fun onFinishInputView(finishingInput: Boolean) {
+                  stopHoldDelete(null)
+                  super.onFinishInputView(finishingInput)
               }
 
               private fun makeKeyDrawable(
@@ -1262,13 +1309,15 @@ jobs:
                       .scaleY(1.0f)
                       .setDuration(110L)
                       .start()
-                  handler.removeCallbacksAndMessages(null)
+                  handler.removeCallbacks(hideBadgeRunnable)
                   if (!keepVisible) {
-                      handler.postDelayed({
-                          if (::keyPreviewBadge.isInitialized && !isListening) {
-                              keyPreviewBadge.animate().alpha(0.45f).setDuration(200L).start()
-                          }
-                      }, 500L)
+                      handler.postDelayed(hideBadgeRunnable, 500L)
+                  }
+              }
+
+              private val hideBadgeRunnable = Runnable {
+                  if (::keyPreviewBadge.isInitialized && !isListening && !isDeletingHeld) {
+                      keyPreviewBadge.animate().alpha(0.45f).setDuration(200L).start()
                   }
               }
 
@@ -1398,6 +1447,7 @@ jobs:
               }
 
               private fun rebuildKeys() {
+                  stopHoldDelete(null)
                   rootLayout.removeAllViews()
 
                   val topBar = LinearLayout(this).apply {
@@ -1559,6 +1609,7 @@ jobs:
                           val isLangBtn = rawLabel.startsWith("🌐")
                           val isShiftBtn = rawLabel == "⇧"
                           val isEnterBtn = rawLabel == "↵"
+                          val isDeleteBtn = rawLabel == "⌫"
                           val isLetter = rawLabel.length == 1 && rawLabel[0].isLetter()
                           val displayLabel = when {
                               isSpace -> "$rawLabel (🎤)"
@@ -1567,7 +1618,7 @@ jobs:
                           }
                           val baseFill = when {
                               isEnterBtn || (isShiftBtn && isShifted) -> currentAccentFill
-                              isLangBtn || rawLabel == "⌫" || rawLabel == "☺" || isShiftBtn -> currentPopColor
+                              isLangBtn || isDeleteBtn || rawLabel == "☺" || isShiftBtn -> currentPopColor
                               else -> currentKeyFill
                           }
 
@@ -1592,19 +1643,36 @@ jobs:
                                   marginStart = 3
                                   marginEnd = 3
                               }
-                              setOnClickListener {
-                                  if (isLangBtn) {
-                                      playTapEffects()
-                                      toggleLanguage()
-                                      return@setOnClickListener
+                              if (isDeleteBtn) {
+                                  setOnTouchListener { v, event ->
+                                      val btnView = v as Button
+                                      when (event.actionMasked) {
+                                          MotionEvent.ACTION_DOWN -> {
+                                              startHoldDelete(btnView)
+                                              true
+                                          }
+                                          MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                              stopHoldDelete(btnView)
+                                              true
+                                          }
+                                          else -> false
+                                      }
                                   }
-                                  if (isShiftBtn) {
-                                      playTapEffects()
-                                      toggleShift()
-                                      return@setOnClickListener
+                              } else {
+                                  setOnClickListener {
+                                      if (isLangBtn) {
+                                          playTapEffects()
+                                          toggleLanguage()
+                                          return@setOnClickListener
+                                      }
+                                      if (isShiftBtn) {
+                                          playTapEffects()
+                                          toggleShift()
+                                          return@setOnClickListener
+                                      }
+                                      showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, 22f)
+                                      handleKey(displayLabel)
                                   }
-                                  showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, 22f)
-                                  handleKey(displayLabel)
                               }
                               if (isSpace) {
                                   setOnLongClickListener {
@@ -1667,6 +1735,7 @@ jobs:
               }
 
               override fun onDestroy() {
+                  stopHoldDelete(null)
                   isListening = false
                   speechRecognizer?.destroy()
                   handler.removeCallbacksAndMessages(null)
