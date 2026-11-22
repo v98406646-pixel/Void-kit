@@ -845,6 +845,7 @@ jobs:
           import android.content.Context
           import android.content.Intent
           import android.content.pm.PackageManager
+          import android.content.res.Configuration
           import android.graphics.Canvas
           import android.graphics.Color
           import android.graphics.ColorFilter
@@ -955,6 +956,29 @@ jobs:
                   listOf("☺", "🌐 EN", "space", "↵")
               )
 
+              private fun isLandscapeMode(): Boolean {
+                  val dm = resources.displayMetrics
+                  return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE || dm.widthPixels > dm.heightPixels
+              }
+
+              private fun computeAdaptiveHeights(): List<Int> {
+                  val dm = resources.displayMetrics
+                  val land = isLandscapeMode()
+                  return if (land) {
+                      val targetTotal = (dm.heightPixels * 0.45f).toInt().coerceIn(220, 420)
+                      val sugH = (targetTotal * 0.13f).toInt().coerceAtLeast(30)
+                      val numH = (targetTotal * 0.14f).toInt().coerceAtLeast(32)
+                      val mainH = (targetTotal * 0.165f).toInt().coerceAtLeast(36)
+                      listOf(0, sugH, numH, mainH)
+                  } else {
+                      listOf(86, 78, 84, 114)
+                  }
+              }
+
+              override fun onEvaluateFullscreenMode(): Boolean {
+                  return false
+              }
+
               private val holdDeleteRunnable = object : Runnable {
                   override fun run() {
                       if (!isDeletingHeld) return
@@ -1052,6 +1076,8 @@ jobs:
 
               private fun updateSuggestions() {
                   if (!::suggestionBar.isInitialized) return
+                  val land = isLandscapeMode()
+                  val heights = computeAdaptiveHeights()
                   val prefix = getCurrentWordPrefix()
                   val words = findPredictions(prefix)
                   suggestionBar.removeAllViews()
@@ -1061,17 +1087,20 @@ jobs:
                           text = word
                           isAllCaps = false
                           typeface = Typeface.DEFAULT_BOLD
-                          textSize = 13f
+                          textSize = if (land) 11f else 13f
+                          setPadding(0, 0, 0, 0)
+                          minHeight = 0
+                          minimumHeight = 0
                           setTextColor(Color.WHITE)
                           background = makeKeyDrawable(
                               if (isExactPrefix) currentKeyFill else currentAccentFill,
                               currentStrokeColor,
-                              18f,
+                              if (land) 12f else 18f,
                               2
                           )
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              78,
+                              heights[1],
                               1f
                           ).apply {
                               marginStart = 3
@@ -1090,6 +1119,8 @@ jobs:
                       else -> return
                   }
                   if (!::altCharBar.isInitialized) return
+                  val land = isLandscapeMode()
+                  val heights = computeAdaptiveHeights()
                   emojiVisible = false
                   clipboardVisible = false
                   if (::emojiBar.isInitialized) emojiBar.visibility = View.GONE
@@ -1101,12 +1132,15 @@ jobs:
                           text = variant
                           isAllCaps = false
                           typeface = Typeface.DEFAULT_BOLD
-                          textSize = 16f
+                          textSize = if (land) 13f else 16f
+                          setPadding(0, 0, 0, 0)
+                          minHeight = 0
+                          minimumHeight = 0
                           setTextColor(Color.WHITE)
-                          background = makeKeyDrawable(currentAccentFill, Color.WHITE, 18f, 2)
+                          background = makeKeyDrawable(currentAccentFill, Color.WHITE, if (land) 12f else 18f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              92,
+                              if (land) heights[2] else 92,
                               1f
                           ).apply {
                               marginStart = 4
@@ -1283,9 +1317,10 @@ jobs:
               }
 
               override fun onCreateInputView(): View {
+                  val land = isLandscapeMode()
                   rootLayout = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
-                      setPadding(12, 10, 12, 22)
+                      setPadding(12, if (land) 3 else 10, 12, if (land) 4 else 22)
                   }
                   applyTheme()
                   rebuildKeys()
@@ -1295,6 +1330,18 @@ jobs:
               override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
                   super.onStartInputView(info, restarting)
                   if (::rootLayout.isInitialized) {
+                      val land = isLandscapeMode()
+                      rootLayout.setPadding(12, if (land) 3 else 10, 12, if (land) 4 else 22)
+                      applyTheme()
+                      rebuildKeys()
+                  }
+              }
+
+              override fun onConfigurationChanged(newConfig: Configuration) {
+                  super.onConfigurationChanged(newConfig)
+                  if (::rootLayout.isInitialized) {
+                      val land = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
+                      rootLayout.setPadding(12, if (land) 3 else 10, 12, if (land) 4 else 22)
                       applyTheme()
                       rebuildKeys()
                   }
@@ -1453,6 +1500,8 @@ jobs:
 
               private fun rebuildClipboardBar() {
                   if (!::clipboardBar.isInitialized) return
+                  val land = isLandscapeMode()
+                  val heights = computeAdaptiveHeights()
                   clipboardBar.removeAllViews()
                   val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                   val clipText = cm.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString()?.trim().orEmpty()
@@ -1461,11 +1510,15 @@ jobs:
                       text = label
                       isAllCaps = false
                       typeface = Typeface.DEFAULT_BOLD
+                      textSize = if (land) 12f else 14f
+                      setPadding(0, 0, 0, 0)
+                      minHeight = 0
+                      minimumHeight = 0
                       setTextColor(Color.WHITE)
-                      background = makeKeyDrawable(currentAccentFill, currentStrokeColor, 20f, 2)
+                      background = makeKeyDrawable(currentAccentFill, currentStrokeColor, if (land) 12f else 20f, 2)
                       layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.MATCH_PARENT,
-                          92
+                          if (land) heights[2] else 92
                       )
                       setOnClickListener {
                           playTapEffects()
@@ -1481,7 +1534,7 @@ jobs:
               }
 
               private fun showBadgeMessage(text: String, keepVisible: Boolean = false) {
-                  if (!::keyPreviewBadge.isInitialized) return
+                  if (!::keyPreviewBadge.isInitialized || isLandscapeMode()) return
                   keyPreviewBadge.text = text
                   keyPreviewBadge.alpha = 1f
                   keyPreviewBadge.scaleX = 1.14f
@@ -1636,48 +1689,62 @@ jobs:
                   altCharVisible = false
                   rootLayout.removeAllViews()
 
-                  val topBar = LinearLayout(this).apply {
-                      orientation = LinearLayout.HORIZONTAL
-                      gravity = Gravity.CENTER_VERTICAL
-                      layoutParams = LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.MATCH_PARENT,
-                          LinearLayout.LayoutParams.WRAP_CONTENT
-                      ).apply {
-                          bottomMargin = 6
-                      }
-                  }
+                  val land = isLandscapeMode()
+                  val heights = computeAdaptiveHeights()
+                  val topBtnHeight = heights[0]
+                  val numBtnHeight = heights[2]
+                  val mainKeyHeight = heights[3]
+                  val keyRadius = if (land) 12f else 22f
+                  val rowGap = if (land) 2 else 7
 
-                  val topActions = listOf(
-                      "👑" to { openVoidKeysApp() },
-                      "✨" to { cycleTheme() },
-                      "📋" to { toggleClipboardBar() },
-                      "Aあ" to { toggleLanguage() },
-                      "⚙️" to { openKeyboardSettings() },
-                      "☺" to { toggleEmojiBar() }
-                  )
-
-                  for ((iconText, action) in topActions) {
-                      topBar.addView(Button(this).apply {
-                          text = iconText
-                          isAllCaps = false
-                          typeface = Typeface.DEFAULT_BOLD
-                          setTextColor(Color.WHITE)
-                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 18f, 2)
+                  if (!land) {
+                      val topBar = LinearLayout(this).apply {
+                          orientation = LinearLayout.HORIZONTAL
+                          gravity = Gravity.CENTER_VERTICAL
                           layoutParams = LinearLayout.LayoutParams(
-                              0,
-                              86,
-                              1f
+                              LinearLayout.LayoutParams.MATCH_PARENT,
+                              LinearLayout.LayoutParams.WRAP_CONTENT
                           ).apply {
-                              marginStart = 3
-                              marginEnd = 3
+                              bottomMargin = 6
                           }
-                          setOnClickListener {
-                              playTapEffects()
-                              action()
-                          }
-                      })
+                      }
+
+                      val topActions = listOf(
+                          "👑" to { openVoidKeysApp() },
+                          "✨" to { cycleTheme() },
+                          "📋" to { toggleClipboardBar() },
+                          "Aあ" to { toggleLanguage() },
+                          "⚙️" to { openKeyboardSettings() },
+                          "☺" to { toggleEmojiBar() }
+                      )
+
+                      for ((iconText, action) in topActions) {
+                          topBar.addView(Button(this).apply {
+                              text = iconText
+                              isAllCaps = false
+                              typeface = Typeface.DEFAULT_BOLD
+                              textSize = 14f
+                              setPadding(0, 0, 0, 0)
+                              minHeight = 0
+                              minimumHeight = 0
+                              setTextColor(Color.WHITE)
+                              background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 18f, 2)
+                              layoutParams = LinearLayout.LayoutParams(
+                                  0,
+                                  topBtnHeight,
+                                  1f
+                              ).apply {
+                                  marginStart = 3
+                                  marginEnd = 3
+                              }
+                              setOnClickListener {
+                                  playTapEffects()
+                                  action()
+                              }
+                          })
+                      }
+                      rootLayout.addView(topBar)
                   }
-                  rootLayout.addView(topBar)
 
                   suggestionBar = LinearLayout(this).apply {
                       orientation = LinearLayout.HORIZONTAL
@@ -1686,7 +1753,7 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
                       ).apply {
-                          bottomMargin = 5
+                          bottomMargin = if (land) 2 else 5
                       }
                   }
                   rootLayout.addView(suggestionBar)
@@ -1698,6 +1765,7 @@ jobs:
                       setTextColor(Color.WHITE)
                       gravity = Gravity.CENTER
                       alpha = 0.5f
+                      visibility = if (land) View.GONE else View.VISIBLE
                       background = makeKeyDrawable(currentAccentFill, currentStrokeColor, 20f, 1)
                       setPadding(24, 4, 24, 4)
                       layoutParams = LinearLayout.LayoutParams(
@@ -1718,7 +1786,7 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
                       ).apply {
-                          bottomMargin = 6
+                          bottomMargin = if (land) 2 else 6
                       }
                   }
                   rootLayout.addView(altCharBar)
@@ -1730,7 +1798,7 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
                       ).apply {
-                          bottomMargin = 6
+                          bottomMargin = if (land) 2 else 6
                       }
                   }
                   rebuildClipboardBar()
@@ -1744,25 +1812,29 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
                       ).apply {
-                          bottomMargin = 6
+                          bottomMargin = if (land) 2 else 6
                       }
                   }
                   for (em in emojis) {
                       emojiBar.addView(Button(this).apply {
                           text = em
                           isAllCaps = false
+                          textSize = if (land) 11f else 14f
+                          setPadding(0, 0, 0, 0)
+                          minHeight = 0
+                          minimumHeight = 0
                           setTextColor(Color.WHITE)
-                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 18f, 2)
+                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, if (land) 10f else 18f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              90,
+                              if (land) numBtnHeight else 90,
                               1f
                           ).apply {
                               marginStart = 2
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, em, currentKeyFill, currentStrokeColor, 18f)
+                              showKeyAnimation(this, em, currentKeyFill, currentStrokeColor, if (land) 10f else 18f)
                               playTapEffects()
                               currentInputConnection?.commitText(em, 1)
                               updateSuggestions()
@@ -1778,7 +1850,7 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
                       ).apply {
-                          bottomMargin = 4
+                          bottomMargin = if (land) 1 else 4
                       }
                   }
                   for (num in numRow) {
@@ -1786,18 +1858,22 @@ jobs:
                           text = num
                           isAllCaps = false
                           typeface = Typeface.DEFAULT_BOLD
+                          textSize = if (land) 11f else 14f
+                          setPadding(0, 0, 0, 0)
+                          minHeight = 0
+                          minimumHeight = 0
                           setTextColor(Color.WHITE)
-                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, 16f, 2)
+                          background = makeKeyDrawable(currentKeyFill, currentStrokeColor, if (land) 10f else 16f, 2)
                           layoutParams = LinearLayout.LayoutParams(
                               0,
-                              84,
+                              numBtnHeight,
                               1f
                           ).apply {
                               marginStart = 2
                               marginEnd = 2
                           }
                           setOnClickListener {
-                              showKeyAnimation(this, num, currentKeyFill, currentStrokeColor, 16f)
+                              showKeyAnimation(this, num, currentKeyFill, currentStrokeColor, if (land) 10f else 16f)
                               handleKey(num)
                           }
                       })
@@ -1813,7 +1889,7 @@ jobs:
                               LinearLayout.LayoutParams.MATCH_PARENT,
                               LinearLayout.LayoutParams.WRAP_CONTENT
                           ).apply {
-                              topMargin = 7
+                              topMargin = rowGap
                           }
                       }
                       for (rawLabel in rowKeys) {
@@ -1839,9 +1915,17 @@ jobs:
                               text = displayLabel
                               isAllCaps = false
                               typeface = Typeface.DEFAULT_BOLD
-                              textSize = if (isSpace || isLangBtn) 13f else 15f
+                              textSize = when {
+                                  land && (isSpace || isLangBtn) -> 10f
+                                  land -> 12f
+                                  isSpace || isLangBtn -> 13f
+                                  else -> 15f
+                              }
+                              setPadding(0, 0, 0, 0)
+                              minHeight = 0
+                              minimumHeight = 0
                               setTextColor(Color.WHITE)
-                              background = makeKeyDrawable(baseFill, currentStrokeColor, 22f, 2)
+                              background = makeKeyDrawable(baseFill, currentStrokeColor, keyRadius, 2)
                               val weight = when {
                                   isSpace -> 3.0f
                                   isLangBtn -> 1.4f
@@ -1850,7 +1934,7 @@ jobs:
                               }
                               layoutParams = LinearLayout.LayoutParams(
                                   0,
-                                  114,
+                                  mainKeyHeight,
                                   weight
                               ).apply {
                                   marginStart = 3
@@ -1887,7 +1971,7 @@ jobs:
                                           altCharVisible = false
                                           if (::altCharBar.isInitialized) altCharBar.visibility = View.GONE
                                       }
-                                      showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, 22f)
+                                      showKeyAnimation(this, if (isSpace) "␣" else displayLabel, baseFill, currentStrokeColor, keyRadius)
                                       handleKey(displayLabel)
                                   }
                               }
